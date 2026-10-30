@@ -64,3 +64,19 @@
 .menu-image-preview img{width:100px;height:80px;object-fit:cover;border-radius:7px}
 .menu-image-preview button{padding:8px 12px;border:1px solid #e0e5dc;border-radius:8px;background:#fff;color:#697468;font:inherit;font-size:11px;cursor:pointer}
 @media(max-width:520px){.menu-image-preview{grid-column:auto}}
+
+
+/* Menu item editing and deletion controls */
+.menu-form-actions{grid-column:1/-1;display:flex;gap:9px}
+.menu-form-actions .order-button{flex:1;grid-column:auto}
+.menu-form-actions .logout-button{min-width:105px}
+.managed-menu-list article{align-items:center}
+.managed-menu-info{display:flex!important;grid-template-columns:none!important;flex-direction:row;align-items:center;gap:12px;min-width:0}
+.managed-menu-info>img{width:58px;height:52px;flex-shrink:0;object-fit:cover;border-radius:8px}
+.managed-menu-info>div{display:grid;gap:5px;min-width:0}
+.managed-menu-info strong{color:#394337;font-size:12px}
+.managed-menu-actions{display:flex!important;grid-template-columns:none!important;flex-direction:row;gap:7px;flex-shrink:0}
+.managed-menu-actions button{padding:8px 11px;font-size:11px}
+.menu-delete-button{padding:8px 11px;border:1px solid #efd6d2;border-radius:9px;background:#fff7f5;color:#a14c42;font:inherit;font-size:11px;cursor:pointer}
+.menu-delete-button:disabled,.managed-menu-actions button:disabled{opacity:.55;cursor:wait}
+@media(max-width:520px){.menu-form-actions{flex-direction:column}.menu-form-actions .logout-button{width:100%}.managed-menu-list article{align-items:flex-start;flex-direction:column}.managed-menu-info{width:100%}.managed-menu-actions{width:100%}.managed-menu-actions button{flex:1}}
