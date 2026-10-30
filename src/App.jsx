@@ -264,3 +264,9 @@ export default function App() {
     <footer><span>TABLE ORDER</span><span>편안한 식사 되세요 :)</span></footer>
   </div>
 }
+
+const visibleCustomerOrders = customerOrders.filter(
+  order =>
+    order.payment_status !== 'paid' &&
+    order.status !== 'cancelled'
+)
