@@ -32,6 +32,7 @@ npm run dev
    - `202610300003_table_qr_tokens.sql`
    - `202610300004_customer_order_history_payment.sql`
    - `202610300005_staff_menu_management.sql`
+   - `202610300006_menu_item_images.sql`
 5. 직원 계정이 이미 로그인되어 있었다면 로그아웃 후 다시 로그인해 새 JWT를 발급받습니다.
 6. Cloudflare Pages 환경변수에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`를 설정합니다.
 
@@ -42,7 +43,7 @@ npm run dev
 - `테이블 QR 관리`에서 테이블을 추가하고 QR PNG 다운로드
 - QR 코드를 각 테이블에 부착
 - `주문 관리`에서 주문 내용 및 조리 상태 확인
-- `메뉴 관리`에서 음식종류 및 각 종류별 메뉴 등록
+- `메뉴 관리`에서 음식종류 및 각 종류별 메뉴 등록, 음식 사진 업로드
 - 손님이 카운터에서 결제하면 해당 주문의 결제 상태를 `결제 완료`로 변경
 
 ### 손님
