@@ -33,6 +33,7 @@ export default function App() {
   const [editingMenuImageUrl, setEditingMenuImageUrl] = useState('')
   const [menuSaving, setMenuSaving] = useState(false)
   const [cart, setCart] = useState([])
+  const [orderSubmitting, setOrderSubmitting] = useState(false)
   const [orders, setOrders] = useState([])
   const [selectedOrderStatuses, setSelectedOrderStatuses] = useState(['pending', 'accepted', 'preparing', 'served'])
   const [selectedOrderTable, setSelectedOrderTable] = useState('all')
@@ -201,22 +202,34 @@ export default function App() {
     setCart(current => current.map(item => item.id === id ? { ...item, quantity: item.quantity + amount } : item).filter(item => item.quantity > 0))
   }
   async function submitOrder() {
-    if (!cart.length || tableNumber == null) return
-    if (supabase) {
-      const args = tableToken
-        ? { p_table_token: tableToken, p_items: cart.map(item => ({ menu_item_id: item.id, quantity: item.quantity })) }
-        : null
-      if (!args) { setNotice('테이블 QR 코드로 접속해 주세요.'); return }
-      const { data: orderId, error } = await supabase.rpc('create_customer_order_by_token', args)
-      if (error) { setNotice('주문 접수에 실패했습니다: ' + error.message); return }
+    if (orderSubmitting) return
+    if (!cart.length) { setNotice('주문할 메뉴를 먼저 담아 주세요.'); return }
+    if (tableNumber == null) { setNotice('테이블 정보를 확인하지 못했습니다. QR 코드를 다시 스캔해 주세요.'); return }
+    if (!isSupabaseConfigured || !supabase) { setNotice('주문 서버 연결 설정이 없습니다. 매장 관리자에게 문의해 주세요.'); return }
+    if (!tableToken) { setNotice('테이블별 QR 코드를 스캔한 화면에서 주문해 주세요.'); return }
+
+    setOrderSubmitting(true)
+    setNotice('주문을 접수하고 있습니다...')
+    try {
+      const { data: orderId, error } = await supabase.rpc('create_customer_order_by_token', {
+        p_table_token: tableToken,
+        p_items: cart.map(item => ({ menu_item_id: item.id, quantity: item.quantity })),
+      })
+      if (error) throw error
+      if (!orderId) throw new Error('서버에서 주문 번호를 받지 못했습니다.')
       setCustomerOrderIds(current => {
         const next = [...new Set([...current, orderId])].slice(-30)
         localStorage.setItem('qrcodemenu-orders-' + tableToken, JSON.stringify(next))
         return next
       })
+      setCart([])
+      setNotice('주문이 접수되었습니다. 카운터에서 결제해 주세요.')
+    } catch (error) {
+      console.error('주문 접수 오류:', error)
+      setNotice('주문 접수에 실패했습니다: ' + (error?.message || '알 수 없는 오류'))
+    } finally {
+      setOrderSubmitting(false)
     }
-    setCart([])
-    setNotice('주문이 접수되었습니다. 카운터에서 결제해 주세요.')
   }
   async function signInCounter(event) {
     event.preventDefault()
@@ -409,7 +422,7 @@ export default function App() {
             <div className="cart-title"><div><p className="eyebrow">YOUR ORDER</p><h2>테이블 {String(tableNumber ?? 1).padStart(2, '0')} 주문 내역</h2></div><span>{cart.reduce((s, i) => s + i.quantity, 0)}개</span></div>
             {cart.length ? <div className="cart-items">{cart.map(item => <div className="cart-row" key={item.id}><div><b>{item.name}</b><small>{money(item.price)}</small></div><div className="quantity"><button onClick={() => changeQuantity(item.id, -1)}>−</button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.id, 1)}>+</button></div></div>)}</div> : <div className="empty-cart"><span>🛍️</span><b>아직 담긴 메뉴가 없어요.</b><small>마음에 드는 메뉴를 선택해 주세요.</small></div>}
             <div className="cart-total"><span>총 주문 금액</span><b>{money(total)}</b></div>
-            <button className="order-button" disabled={!cart.length} onClick={submitOrder}>주문하기 <span>→</span></button>
+            <button type="button" className="order-button" disabled={!cart.length || orderSubmitting} onClick={submitOrder}>{orderSubmitting ? '주문 접수 중...' : '주문하기'} <span>→</span></button>
             <p className="payment-note">결제는 매장 카운터에서 진행됩니다.</p>
           </aside>
         </div>}
