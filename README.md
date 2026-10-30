@@ -32,7 +32,7 @@ npm run dev
    where id = '직원-사용자-UUID';
    ```
 3. `supabase/migrations/202610300002_staff_order_access.sql` 내용을 SQL Editor에서 실행합니다.
-4. 카운터 보기 탭에서 직원 이메일과 비밀번호로 로그인합니다. 로그인 후 최근 주문 100건과 주문 상세가 로드되고, 새 주문/상태 변경은 Realtime으로 갱신됩니다.
+4. `supabase/migrations/202610300003_table_qr_tokens.sql` 내용을 SQL Editor에서 실행합니다.\n5. `supabase/migrations/202610300004_customer_order_history_payment.sql` 내용을 SQL Editor에서 실행합니다.\n6. 카운터 보기 탭에서 직원 이메일과 비밀번호로 로그인합니다. 로그인 후 최근 주문 100건과 주문 상세가 로드되고, 새 주문/상태 변경은 Realtime으로 갱신됩니다.
 5. 직원 계정이 이미 로그인되어 있으면 권한 변경 후 로그아웃/로그인하여 새 JWT를 발급받습니다.
 
 직원 역할은 사용자 편집 가능한 `user_metadata`가 아니라 관리자만 설정할 수 있는 `app_metadata.role`로 판별합니다. `service_role` 키를 프론트엔드에 절대 넣지 마세요.
