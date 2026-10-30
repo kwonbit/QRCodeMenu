@@ -11,8 +11,8 @@ const menu = [
   { id: 'coffee', category: '음료', name: '아메리카노', desc: '깔끔한 향의 커피', price: 3500, emoji: '☕' },
 ]
 const money = value => new Intl.NumberFormat('ko-KR').format(value || 0) + '원'
-const statusLabels = { pending: '접수 대기', accepted: '주문 확인', preparing: '조리 중', served: '제공 완료', cancelled: '취소' }
-const nextStatuses = [{ value: 'accepted', label: '주문 확인' }, { value: 'preparing', label: '조리 시작' }, { value: 'served', label: '제공 완료' }, { value: 'cancelled', label: '주문 취소' }]
+const statusLabels = { pending: '접수 대기', accepted: '주문 확인', preparing: '조리 시작', served: '제공 완료', paid: '결제 완료', cancelled: '주문 취소' }
+const orderStatusOptions = Object.entries(statusLabels).map(([value, label]) => ({ value, label }))
 
 export default function App() {
   const params = new URLSearchParams(window.location.search)
@@ -30,6 +30,7 @@ export default function App() {
   const [category, setCategory] = useState('전체')
   const [cart, setCart] = useState([])
   const [orders, setOrders] = useState([])
+  const [selectedOrderStatuses, setSelectedOrderStatuses] = useState(['pending', 'accepted', 'preparing', 'served'])
   const [tables, setTables] = useState([])
   const [qrImages, setQrImages] = useState({})
   const [newTableNumber, setNewTableNumber] = useState('')
@@ -45,6 +46,7 @@ export default function App() {
   const categories = ['전체', ...new Set(menu.map(item => item.category))]
   const filtered = category === '전체' ? menu : menu.filter(item => item.category === category)
   const visibleCustomerOrders = customerOrders.filter(order => order.payment_status !== 'paid' && order.status !== 'cancelled')
+  const filteredOrders = orders.filter(order => selectedOrderStatuses.includes(order.payment_status === 'paid' ? 'paid' : order.status))
   const visibleCustomerOrderTotal = visibleCustomerOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
   const customerOrderStatusCounts = Object.entries(statusLabels).filter(([status]) => status !== 'cancelled').map(([status, label]) => ({ status, label, count: visibleCustomerOrders.filter(order => order.status === status).length }))
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart])
@@ -189,9 +191,10 @@ export default function App() {
   }
   async function updateOrderStatus(order, status) {
     setUpdatingOrder(order.id)
-    const { error } = await supabase.from('orders').update({ status }).eq('id', order.id)
+    const update = status === 'paid' ? { payment_status: 'paid' } : status === 'cancelled' ? { status: 'cancelled' } : { status, payment_status: 'unpaid' }
+    const { error } = await supabase.from('orders').update(update).eq('id', order.id)
     if (error) setOrderError('상태 변경 실패: ' + error.message)
-    else setOrders(current => current.map(item => item.id === order.id ? { ...item, status } : item))
+    else setOrders(current => current.map(item => item.id === order.id ? { ...item, ...update } : item))
     setUpdatingOrder('')
   }
   async function createTable(event) {
@@ -252,9 +255,10 @@ export default function App() {
           <nav className="tabs admin-tabs"><button className={tab === 'counter' ? 'active' : ''} onClick={() => setTab('counter')}>주문 관리</button><button className={tab === 'tables' ? 'active' : ''} onClick={() => setTab('tables')}>테이블 QR 관리</button></nav>
           {orderError && <p className="form-error">{orderError}</p>}
           {tab === 'counter' ? <>
-            <div className="section-heading counter-heading"><span className="live-label">● 주문 {orders.length}건</span><span className="refresh-label">{ordersLoading ? '불러오는 중...' : '최근 주문 100건'}</span></div>
-            {!orders.length ? <div className="empty-orders">저장된 주문이 없습니다.</div> : <div className="order-list">{orders.map(order => <article className="order-card" key={order.id}><div className="order-card-head"><b>테이블 {order.table_number}</b><span>{new Date(order.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div><div className="order-detail-items">{(order.order_items || []).map(item => <div key={item.id}><span>{item.item_name} × {item.quantity}</span><b>{money(item.line_total)}</b></div>)}</div><div className="order-card-bottom"><strong>{money(order.total_amount)}</strong><span className={'status status-' + order.status}>{statusLabels[order.status] || order.status}</span></div>
-              <div className="order-payment-control"><label>결제 상태<select value={order.payment_status || 'unpaid'} disabled={updatingOrder === order.id} onChange={async e => { const payment_status = e.target.value; setUpdatingOrder(order.id); const { error } = await supabase.from('orders').update({ payment_status }).eq('id', order.id); if (error) setOrderError('결제 상태 변경 실패: ' + error.message); else setOrders(current => current.map(row => row.id === order.id ? { ...row, payment_status } : row)); setUpdatingOrder('') }}><option value="unpaid">결제 전</option><option value="paid">결제 완료</option></select></label></div><div className="order-actions"><label>주문 상태<select value={order.status} disabled={updatingOrder === order.id} onChange={e => updateOrderStatus(order, e.target.value)}><option value="pending">접수 대기</option>{nextStatuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select></label></div></article>)}</div>}
+            <div className="section-heading counter-heading"><span className="live-label">● 주문 {filteredOrders.length}건 표시 / 전체 {orders.length}건</span><span className="refresh-label">{ordersLoading ? '불러오는 중...' : '최근 주문 100건'}</span></div>
+            <section className="order-status-filter"><div className="order-filter-heading"><b>주문 상태 필터</b><span>여러 상태를 동시에 선택할 수 있습니다.</span></div><div className="order-filter-options">{orderStatusOptions.map(option => <label key={option.value}><input type="checkbox" checked={selectedOrderStatuses.includes(option.value)} onChange={e => setSelectedOrderStatuses(current => e.target.checked ? [...current, option.value] : current.filter(value => value !== option.value))} /><span>{option.label}</span></label>)}</div></section>
+            {!filteredOrders.length ? <div className="empty-orders">{orders.length ? '선택한 주문 상태에 해당하는 주문이 없습니다.' : '저장된 주문이 없습니다.'}</div> : <div className="order-list">{filteredOrders.map(order => <article className="order-card" key={order.id}><div className="order-card-head"><b>테이블 {order.table_number}</b><span>{new Date(order.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div><div className="order-detail-items">{(order.order_items || []).map(item => <div key={item.id}><span>{item.item_name} × {item.quantity}</span><b>{money(item.line_total)}</b></div>)}</div><div className="order-card-bottom"><strong>{money(order.total_amount)}</strong><span className={'status status-' + (order.payment_status === 'paid' ? 'paid' : order.status)}>{statusLabels[order.payment_status === 'paid' ? 'paid' : order.status] || order.status}</span></div>
+              <div className="order-actions"><label>주문 상태<select value={order.payment_status === 'paid' ? 'paid' : order.status} disabled={updatingOrder === order.id} onChange={e => updateOrderStatus(order, e.target.value)}>{orderStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div></article>)}</div>}
           </> : <div className="table-manager">
             <div className="section-heading"><div><p className="eyebrow">TABLE QR CODES</p><h2>테이블별 QR 코드</h2></div><span className="menu-count">{tables.length} TABLES</span></div>
             <form className="add-table-form" onSubmit={createTable}><label>새 테이블 번호<input type="number" min="1" value={newTableNumber} onChange={e => setNewTableNumber(e.target.value)} placeholder="예: 2" required /></label><button className="order-button">테이블 추가</button></form>
