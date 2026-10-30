@@ -47,7 +47,7 @@ export default function App() {
   const categories = ['전체', ...new Set(menu.map(item => item.category))]
   const filtered = category === '전체' ? menu : menu.filter(item => item.category === category)
   const visibleCustomerOrders = customerOrders.filter(order => order.payment_status !== 'paid' && order.status !== 'cancelled')
-  const orderTableOptions = [...new Set(orders.map(order => String(order.table_number)))].sort((a, b) => Number(a) - Number(b))
+  const orderTableOptions = [...new Set(tables.map(table => String(table.table_number)))].sort((a, b) => Number(a) - Number(b))
   const filteredOrders = orders.filter(order => selectedOrderStatuses.includes(order.payment_status === 'paid' ? 'paid' : order.status) && (selectedOrderTable === 'all' || String(order.table_number) === selectedOrderTable))
   const visibleCustomerOrderTotal = visibleCustomerOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
   const customerOrderStatusCounts = Object.entries(statusLabels).filter(([status]) => status !== 'cancelled').map(([status, label]) => ({ status, label, count: visibleCustomerOrders.filter(order => order.status === status).length }))
