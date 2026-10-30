@@ -27,6 +27,8 @@ export default function App() {
   const [newMenuName, setNewMenuName] = useState('')
   const [newMenuDescription, setNewMenuDescription] = useState('')
   const [newMenuPrice, setNewMenuPrice] = useState('')
+  const [newMenuImage, setNewMenuImage] = useState(null)
+  const [menuImagePreview, setMenuImagePreview] = useState('')
   const [menuSaving, setMenuSaving] = useState(false)
   const [cart, setCart] = useState([])
   const [orders, setOrders] = useState([])
@@ -99,7 +101,7 @@ export default function App() {
     const loadMenu = async () => {
       const [{ data: categoryRows, error: categoryError }, { data: menuRows, error: menuError }] = await Promise.all([
         supabase.from('menu_categories').select('id, name, sort_order, is_active').eq('is_active', true).order('sort_order'),
-        supabase.from('menu_items').select('id, category_id, name, description, price, is_available, sort_order, menu_categories(name)').eq('is_available', true).order('sort_order')
+        supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').eq('is_available', true).order('sort_order')
       ])
       if (!active) return
       if (categoryError) setNotice('음식종류 조회 실패: ' + categoryError.message)
@@ -108,7 +110,7 @@ export default function App() {
         if (!selectedMenuCategory && categoryRows?.length) setSelectedMenuCategory(categoryRows[0].id)
       }
       if (menuError) setNotice('메뉴 조회 실패: ' + menuError.message)
-      else setMenu((menuRows || []).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, emoji: '🍽️' })))
+      else setMenu((menuRows || []).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, image_url: item.image_url, emoji: '🍽️' })))
     }
     loadMenu()
     return () => { active = false }
@@ -147,7 +149,7 @@ export default function App() {
     const loadMenuManagement = async () => {
       const [{ data: categoryRows, error: categoryError }, { data: menuRows, error: menuError }] = await Promise.all([
         supabase.from('menu_categories').select('id, name, sort_order, is_active').order('sort_order'),
-        supabase.from('menu_items').select('id, category_id, name, description, price, is_available, sort_order, menu_categories(name)').order('sort_order')
+        supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').order('sort_order')
       ])
       if (!active) return
       if (categoryError) setOrderError('음식종류 조회 실패: ' + categoryError.message)
@@ -157,7 +159,7 @@ export default function App() {
         if (!selectedMenuCategory && activeCategories.length) setSelectedMenuCategory(activeCategories[0].id)
       }
       if (menuError) setOrderError('메뉴 조회 실패: ' + menuError.message)
-      else setMenu((menuRows || []).filter(item => item.is_available).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, emoji: '🍽️' })))
+      else setMenu((menuRows || []).filter(item => item.is_available).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, image_url: item.image_url, emoji: '🍽️' })))
     }
     const loadTables = async () => {
       const { data, error } = await supabase.from('restaurant_tables').select('id, table_number, table_token, is_active').order('table_number')
@@ -257,20 +259,27 @@ export default function App() {
     event.preventDefault()
     const price = Number(newMenuPrice)
     if (!selectedMenuCategory || !newMenuName.trim() || !Number.isInteger(price) || price < 0) return
+    if (newMenuImage && (!newMenuImage.type.startsWith('image/') || newMenuImage.size > 5 * 1024 * 1024)) { setOrderError('이미지는 5MB 이하만 가능합니다.'); return }
     setMenuSaving(true)
     const id = crypto.randomUUID()
-    const { error } = await supabase.from('menu_items').insert({ id, category_id: selectedMenuCategory, name: newMenuName.trim(), description: newMenuDescription.trim(), price, sort_order: menu.filter(item => item.category_id === selectedMenuCategory).length + 1 })
+    let image_url = null
+    if (newMenuImage) {
+      const ext = (newMenuImage.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+      const path = id + '/' + crypto.randomUUID() + '.' + ext
+      const { error: uploadError } = await supabase.storage.from('menu-images').upload(path, newMenuImage, { cacheControl: '3600', upsert: false, contentType: newMenuImage.type })
+      if (uploadError) { setOrderError('음식 사진 업로드 실패: ' + uploadError.message); setMenuSaving(false); return }
+      image_url = supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
+    }
+    const { error } = await supabase.from('menu_items').insert({ id, category_id: selectedMenuCategory, name: newMenuName.trim(), description: newMenuDescription.trim(), price, image_url, sort_order: menu.filter(item => item.category_id === selectedMenuCategory).length + 1 })
     if (error) setOrderError('메뉴 등록 실패: ' + error.message)
     else {
-      setNewMenuName('')
-      setNewMenuDescription('')
-      setNewMenuPrice('')
+      setNewMenuName(''); setNewMenuDescription(''); setNewMenuPrice(''); setNewMenuImage(null); setMenuImagePreview('')
       const [{ data: categoryRows }, { data: menuRows }] = await Promise.all([
         supabase.from('menu_categories').select('id, name, sort_order, is_active').eq('is_active', true).order('sort_order'),
-        supabase.from('menu_items').select('id, category_id, name, description, price, is_available, sort_order, menu_categories(name)').eq('is_available', true).order('sort_order')
+        supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').eq('is_available', true).order('sort_order')
       ])
       setMenuCategories(categoryRows || [])
-      setMenu((menuRows || []).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, emoji: '🍽️' })))
+      setMenu((menuRows || []).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, image_url: item.image_url, emoji: '🍽️' })))
       setOrderError('')
     }
     setMenuSaving(false)
@@ -315,7 +324,7 @@ export default function App() {
           <section className="menu-section">
             <div className="section-heading"><div><p className="eyebrow">OUR MENU</p><h2>오늘의 메뉴</h2></div><span className="menu-count">{filtered.length} ITEMS</span></div>
             <div className="categories">{categories.map(item => <button key={item} className={category === item ? 'selected' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
-            <div className="menu-grid">{filtered.map(item => <article className="menu-card" key={item.id}><div className="food-art">{item.emoji}<span>{item.category}</span></div><div className="food-info"><h3>{item.name}</h3><p>{item.desc}</p><div className="food-bottom"><b>{money(item.price)}</b><button aria-label={item.name + ' 담기'} onClick={() => add(item)}>+</button></div></div></article>)}</div>
+            <div className="menu-grid">{filtered.map(item => <article className="menu-card" key={item.id}><div className="food-art">{item.image_url ? <img src={item.image_url} alt={item.name} /> : item.emoji}<span>{item.category}</span></div><div className="food-info"><h3>{item.name}</h3><p>{item.desc}</p><div className="food-bottom"><b>{money(item.price)}</b><button aria-label={item.name + ' 담기'} onClick={() => add(item)}>+</button></div></div></article>)}</div>
           </section>
           <aside className="cart-card">
             <div className="cart-title"><div><p className="eyebrow">YOUR ORDER</p><h2>테이블 {String(tableNumber ?? 1).padStart(2, '0')} 주문 내역</h2></div><span>{cart.reduce((s, i) => s + i.quantity, 0)}개</span></div>
@@ -340,7 +349,7 @@ export default function App() {
           </> : tab === 'menu-management' ? <div className="menu-manager">
             <div className="section-heading"><div><p className="eyebrow">MENU MANAGEMENT</p><h2>음식종류 및 메뉴 관리</h2></div><span className="menu-count">{menuCategories.length} CATEGORIES</span></div>
             <section className="menu-admin-panel"><div className="menu-admin-title"><h3>음식종류 등록</h3><p>메뉴를 분류할 음식종류를 먼저 등록해 주세요.</p></div><form className="menu-category-form" onSubmit={createMenuCategory}><input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="예: 식사, 사이드, 음료" maxLength="40" required /><button className="order-button" disabled={menuSaving}>음식종류 추가</button></form><div className="menu-category-chips">{menuCategories.map(item => <button type="button" key={item.id} className={selectedMenuCategory === item.id ? 'selected' : ''} onClick={() => setSelectedMenuCategory(item.id)}>{item.name}</button>)}</div></section>
-            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{menuCategories.find(item => item.id === selectedMenuCategory)?.name || '음식종류'} 메뉴 등록</h3><p>선택한 음식종류 아래에 메뉴를 추가합니다.</p></div>{!menuCategories.length ? <div className="empty-orders">먼저 음식종류를 등록해 주세요.</div> : <form className="menu-item-form" onSubmit={createMenuItem}><label>음식종류<select value={selectedMenuCategory} onChange={e => setSelectedMenuCategory(e.target.value)} required>{menuCategories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>메뉴명<input value={newMenuName} onChange={e => setNewMenuName(e.target.value)} placeholder="예: 김치찌개" maxLength="100" required /></label><label>메뉴 설명<input value={newMenuDescription} onChange={e => setNewMenuDescription(e.target.value)} placeholder="메뉴에 대한 간단한 설명" maxLength="200" /></label><label>판매 가격(원)<input type="number" min="0" step="100" value={newMenuPrice} onChange={e => setNewMenuPrice(e.target.value)} placeholder="예: 9000" required /></label><button className="order-button" disabled={menuSaving}>메뉴 등록</button></form>}</section>
+            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{menuCategories.find(item => item.id === selectedMenuCategory)?.name || '음식종류'} 메뉴 등록</h3><p>선택한 음식종류 아래에 메뉴를 추가합니다.</p></div>{!menuCategories.length ? <div className="empty-orders">먼저 음식종류를 등록해 주세요.</div> : <form className="menu-item-form" onSubmit={createMenuItem}><label>음식종류<select value={selectedMenuCategory} onChange={e => setSelectedMenuCategory(e.target.value)} required>{menuCategories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>메뉴명<input value={newMenuName} onChange={e => setNewMenuName(e.target.value)} placeholder="예: 김치찌개" maxLength="100" required /></label><label>메뉴 설명<input value={newMenuDescription} onChange={e => setNewMenuDescription(e.target.value)} placeholder="메뉴에 대한 간단한 설명" maxLength="200" /></label><label>판매 가격(원)<input type="number" min="0" step="100" value={newMenuPrice} onChange={e => setNewMenuPrice(e.target.value)} placeholder="예: 9000" required /></label><label className="menu-image-field">음식 사진<input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0] || null; setNewMenuImage(file); setMenuImagePreview(file ? URL.createObjectURL(file) : "") }} /><small>JPG, PNG, WEBP · 최대 5MB</small></label>{menuImagePreview && <div className="menu-image-preview"><img src={menuImagePreview} alt="첨부할 음식 사진 미리보기" /><button type="button" onClick={() => { setNewMenuImage(null); setMenuImagePreview("") }}>사진 제거</button></div>}<button className="order-button" disabled={menuSaving}>{menuSaving ? "등록 중..." : "메뉴 등록"}</button></form>}</section>
             <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{menuCategories.find(item => item.id === selectedMenuCategory)?.name || '선택한 종류'} 메뉴 목록</h3><p>선택한 음식종류에 등록된 판매 메뉴입니다.</p></div><div className="managed-menu-list">{menu.filter(item => item.category_id === selectedMenuCategory).map(item => <article key={item.id}><div><b>{item.name}</b><span>{item.desc || '설명 없음'}</span></div><strong>{money(item.price)}</strong></article>)}{!menu.some(item => item.category_id === selectedMenuCategory) && <div className="empty-orders">등록된 메뉴가 없습니다.</div>}</div></section>
           </div> : <div className="table-manager">
             <div className="section-heading"><div><p className="eyebrow">TABLE QR CODES</p><h2>테이블별 QR 코드</h2></div><span className="menu-count">{tables.length} TABLES</span></div>
