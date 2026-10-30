@@ -44,6 +44,7 @@ export default function App() {
   const [updatingOrder, setUpdatingOrder] = useState('')
   const categories = ['전체', ...new Set(menu.map(item => item.category))]
   const filtered = category === '전체' ? menu : menu.filter(item => item.category === category)
+  const visibleCustomerOrders = customerOrders.filter(order => order.payment_status !== 'paid' && order.status !== 'cancelled')
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart])
 
   useEffect(() => {
@@ -264,9 +265,3 @@ export default function App() {
     <footer><span>TABLE ORDER</span><span>편안한 식사 되세요 :)</span></footer>
   </div>
 }
-
-const visibleCustomerOrders = customerOrders.filter(
-  order =>
-    order.payment_status !== 'paid' &&
-    order.status !== 'cancelled'
-)
