@@ -29,6 +29,8 @@ export default function App() {
   const [newMenuPrice, setNewMenuPrice] = useState('')
   const [newMenuImage, setNewMenuImage] = useState(null)
   const [menuImagePreview, setMenuImagePreview] = useState('')
+  const [editingMenuId, setEditingMenuId] = useState(null)
+  const [editingMenuImageUrl, setEditingMenuImageUrl] = useState('')
   const [menuSaving, setMenuSaving] = useState(false)
   const [cart, setCart] = useState([])
   const [orders, setOrders] = useState([])
@@ -255,6 +257,83 @@ export default function App() {
     }
     setMenuSaving(false)
   }
+  function resetMenuForm() {
+    setEditingMenuId(null)
+    setNewMenuName('')
+    setNewMenuDescription('')
+    setNewMenuPrice('')
+    setNewMenuImage(null)
+    setMenuImagePreview('')
+    setEditingMenuImageUrl('')
+  }
+  function startEditMenu(item) {
+    setEditingMenuId(item.id)
+    setSelectedMenuCategory(item.category_id)
+    setNewMenuName(item.name)
+    setNewMenuDescription(item.desc || '')
+    setNewMenuPrice(String(item.price))
+    setNewMenuImage(null)
+    setEditingMenuImageUrl(item.image_url || '')
+    setMenuImagePreview(item.image_url || '')
+    setOrderError('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  async function refreshManagedMenu() {
+    const { data, error } = await supabase.from('menu_items')
+      .select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)')
+      .eq('is_available', true).order('sort_order')
+    if (error) { setOrderError('메뉴 목록 조회 실패: ' + error.message); return }
+    setMenu((data || []).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, image_url: item.image_url, emoji: '🍽️' })))
+  }
+  async function updateMenuItem(event) {
+    event.preventDefault()
+    const price = Number(newMenuPrice)
+    if (!selectedMenuCategory || !newMenuName.trim() || !Number.isInteger(price) || price < 0) return
+    if (newMenuImage && (!newMenuImage.type.startsWith('image/') || newMenuImage.size > 5 * 1024 * 1024)) { setOrderError('이미지는 5MB 이하만 가능합니다.'); return }
+    setMenuSaving(true)
+    let image_url = editingMenuImageUrl || null
+    let uploadedPath = ''
+    if (newMenuImage) {
+      const ext = (newMenuImage.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+      uploadedPath = editingMenuId + '/' + crypto.randomUUID() + '.' + ext
+      const { error: uploadError } = await supabase.storage.from('menu-images').upload(uploadedPath, newMenuImage, { cacheControl: '3600', upsert: false, contentType: newMenuImage.type })
+      if (uploadError) { setOrderError('음식 사진 업로드 실패: ' + uploadError.message); setMenuSaving(false); return }
+      image_url = supabase.storage.from('menu-images').getPublicUrl(uploadedPath).data.publicUrl
+    }
+    const { error } = await supabase.from('menu_items').update({
+      category_id: selectedMenuCategory, name: newMenuName.trim(),
+      description: newMenuDescription.trim(), price, image_url
+    }).eq('id', editingMenuId)
+    if (error) {
+      if (uploadedPath) await supabase.storage.from('menu-images').remove([uploadedPath])
+      setOrderError('메뉴 수정 실패: ' + error.message)
+    } else {
+      const oldUrl = menu.find(item => item.id === editingMenuId)?.image_url
+      if (oldUrl && oldUrl !== image_url) {
+        try {
+          const marker = '/storage/v1/object/public/menu-images/'
+          const oldPath = new URL(oldUrl).pathname.split(marker)[1]
+          if (oldPath) await supabase.storage.from('menu-images').remove([decodeURIComponent(oldPath)])
+        } catch { /* Ignore cleanup errors; the menu update has already succeeded. */ }
+      }
+      await refreshManagedMenu()
+      resetMenuForm()
+      setOrderError('')
+    }
+    setMenuSaving(false)
+  }
+  async function deleteMenuItem(item) {
+    if (!window.confirm('"' + item.name + '" 메뉴를 삭제하시겠습니까?\n주문 내역 보존을 위해 메뉴는 판매 중지 처리됩니다.')) return
+    setMenuSaving(true)
+    const { error } = await supabase.from('menu_items').update({ is_available: false }).eq('id', item.id)
+    if (error) setOrderError('메뉴 삭제 실패: ' + error.message)
+    else {
+      setMenu(current => current.filter(row => row.id !== item.id))
+      if (editingMenuId === item.id) resetMenuForm()
+      setOrderError('')
+    }
+    setMenuSaving(false)
+  }
   async function createMenuItem(event) {
     event.preventDefault()
     const price = Number(newMenuPrice)
@@ -273,7 +352,7 @@ export default function App() {
     const { error } = await supabase.from('menu_items').insert({ id, category_id: selectedMenuCategory, name: newMenuName.trim(), description: newMenuDescription.trim(), price, image_url, sort_order: menu.filter(item => item.category_id === selectedMenuCategory).length + 1 })
     if (error) setOrderError('메뉴 등록 실패: ' + error.message)
     else {
-      setNewMenuName(''); setNewMenuDescription(''); setNewMenuPrice(''); setNewMenuImage(null); setMenuImagePreview('')
+      resetMenuForm()
       const [{ data: categoryRows }, { data: menuRows }] = await Promise.all([
         supabase.from('menu_categories').select('id, name, sort_order, is_active').eq('is_active', true).order('sort_order'),
         supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').eq('is_available', true).order('sort_order')
@@ -349,8 +428,8 @@ export default function App() {
           </> : tab === 'menu-management' ? <div className="menu-manager">
             <div className="section-heading"><div><p className="eyebrow">MENU MANAGEMENT</p><h2>음식종류 및 메뉴 관리</h2></div><span className="menu-count">{menuCategories.length} CATEGORIES</span></div>
             <section className="menu-admin-panel"><div className="menu-admin-title"><h3>음식종류 등록</h3><p>메뉴를 분류할 음식종류를 먼저 등록해 주세요.</p></div><form className="menu-category-form" onSubmit={createMenuCategory}><input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="예: 식사, 사이드, 음료" maxLength="40" required /><button className="order-button" disabled={menuSaving}>음식종류 추가</button></form><div className="menu-category-chips">{menuCategories.map(item => <button type="button" key={item.id} className={selectedMenuCategory === item.id ? 'selected' : ''} onClick={() => setSelectedMenuCategory(item.id)}>{item.name}</button>)}</div></section>
-            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{menuCategories.find(item => item.id === selectedMenuCategory)?.name || '음식종류'} 메뉴 등록</h3><p>선택한 음식종류 아래에 메뉴를 추가합니다.</p></div>{!menuCategories.length ? <div className="empty-orders">먼저 음식종류를 등록해 주세요.</div> : <form className="menu-item-form" onSubmit={createMenuItem}><label>음식종류<select value={selectedMenuCategory} onChange={e => setSelectedMenuCategory(e.target.value)} required>{menuCategories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>메뉴명<input value={newMenuName} onChange={e => setNewMenuName(e.target.value)} placeholder="예: 김치찌개" maxLength="100" required /></label><label>메뉴 설명<input value={newMenuDescription} onChange={e => setNewMenuDescription(e.target.value)} placeholder="메뉴에 대한 간단한 설명" maxLength="200" /></label><label>판매 가격(원)<input type="number" min="0" step="100" value={newMenuPrice} onChange={e => setNewMenuPrice(e.target.value)} placeholder="예: 9000" required /></label><label className="menu-image-field">음식 사진<input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0] || null; setNewMenuImage(file); setMenuImagePreview(file ? URL.createObjectURL(file) : "") }} /><small>JPG, PNG, WEBP · 최대 5MB</small></label>{menuImagePreview && <div className="menu-image-preview"><img src={menuImagePreview} alt="첨부할 음식 사진 미리보기" /><button type="button" onClick={() => { setNewMenuImage(null); setMenuImagePreview("") }}>사진 제거</button></div>}<button className="order-button" disabled={menuSaving}>{menuSaving ? "등록 중..." : "메뉴 등록"}</button></form>}</section>
-            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{menuCategories.find(item => item.id === selectedMenuCategory)?.name || '선택한 종류'} 메뉴 목록</h3><p>선택한 음식종류에 등록된 판매 메뉴입니다.</p></div><div className="managed-menu-list">{menu.filter(item => item.category_id === selectedMenuCategory).map(item => <article key={item.id}><div><b>{item.name}</b><span>{item.desc || '설명 없음'}</span></div><strong>{money(item.price)}</strong></article>)}{!menu.some(item => item.category_id === selectedMenuCategory) && <div className="empty-orders">등록된 메뉴가 없습니다.</div>}</div></section>
+            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{editingMenuId ? '메뉴 수정' : (menuCategories.find(item => item.id === selectedMenuCategory)?.name || '음식종류') + ' 메뉴 등록'}</h3><p>{editingMenuId ? '메뉴 정보를 수정한 뒤 저장해 주세요.' : '선택한 음식종류 아래에 메뉴를 추가합니다.'}</p></div>{!menuCategories.length ? <div className="empty-orders">먼저 음식종류를 등록해 주세요.</div> : <form className="menu-item-form" onSubmit={editingMenuId ? updateMenuItem : createMenuItem}><label>음식종류<select value={selectedMenuCategory} onChange={e => setSelectedMenuCategory(e.target.value)} required>{menuCategories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>메뉴명<input value={newMenuName} onChange={e => setNewMenuName(e.target.value)} placeholder="예: 김치찌개" maxLength="100" required /></label><label>메뉴 설명<input value={newMenuDescription} onChange={e => setNewMenuDescription(e.target.value)} placeholder="메뉴에 대한 간단한 설명" maxLength="200" /></label><label>판매 가격(원)<input type="number" min="0" step="100" value={newMenuPrice} onChange={e => setNewMenuPrice(e.target.value)} placeholder="예: 9000" required /></label><label className="menu-image-field">음식 사진<input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0] || null; setNewMenuImage(file); setMenuImagePreview(file ? URL.createObjectURL(file) : editingMenuImageUrl) }} /><small>JPG, PNG, WEBP · 최대 5MB</small></label>{menuImagePreview && <div className="menu-image-preview"><img src={menuImagePreview} alt="음식 사진 미리보기" /><button type="button" onClick={() => { setNewMenuImage(null); setEditingMenuImageUrl(''); setMenuImagePreview('') }}>사진 제거</button></div>}<div className="menu-form-actions"><button className="order-button" disabled={menuSaving}>{menuSaving ? (editingMenuId ? "저장 중..." : "등록 중...") : (editingMenuId ? "수정 내용 저장" : "메뉴 등록")}</button>{editingMenuId && <button type="button" className="logout-button" disabled={menuSaving} onClick={resetMenuForm}>수정 취소</button>}</div></form>}</section>
+            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{menuCategories.find(item => item.id === selectedMenuCategory)?.name || '선택한 종류'} 메뉴 목록</h3><p>선택한 음식종류에 등록된 판매 메뉴입니다.</p></div><div className="managed-menu-list">{menu.filter(item => item.category_id === selectedMenuCategory).map(item => <article key={item.id}><div className="managed-menu-info">{item.image_url && <img src={item.image_url} alt={item.name} />}<div><b>{item.name}</b><span>{item.desc || '설명 없음'}</span><strong>{money(item.price)}</strong></div></div><div className="managed-menu-actions"><button type="button" className="logout-button" disabled={menuSaving} onClick={() => startEditMenu(item)}>수정</button><button type="button" className="menu-delete-button" disabled={menuSaving} onClick={() => deleteMenuItem(item)}>삭제</button></div></article>)}{!menu.some(item => item.category_id === selectedMenuCategory) && <div className="empty-orders">등록된 메뉴가 없습니다.</div>}</div></section>
           </div> : <div className="table-manager">
             <div className="section-heading"><div><p className="eyebrow">TABLE QR CODES</p><h2>테이블별 QR 코드</h2></div><span className="menu-count">{tables.length} TABLES</span></div>
             <form className="add-table-form" onSubmit={createTable}><label>새 테이블 번호<input type="number" min="1" value={newTableNumber} onChange={e => setNewTableNumber(e.target.value)} placeholder="예: 2" required /></label><button className="order-button">테이블 추가</button></form>
