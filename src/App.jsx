@@ -9,7 +9,14 @@ const menu = [
   { id: 'lemon', category: '음료', name: '레몬에이드', desc: '상큼하고 시원한 에이드', price: 4500, emoji: '🍋' },
   { id: 'coffee', category: '음료', name: '아메리카노', desc: '깔끔한 향의 커피', price: 3500, emoji: '☕' },
 ]
-const money = value => new Intl.NumberFormat('ko-KR').format(value) + '원'
+const money = value => new Intl.NumberFormat('ko-KR').format(value || 0) + '원'
+const statusLabels = { pending: '접수 대기', accepted: '주문 확인', preparing: '조리 중', served: '제공 완료', cancelled: '취소' }
+const nextStatuses = [
+  { value: 'accepted', label: '주문 확인' },
+  { value: 'preparing', label: '조리 시작' },
+  { value: 'served', label: '제공 완료' },
+  { value: 'cancelled', label: '주문 취소' },
+]
 
 export default function App() {
   const params = new URLSearchParams(window.location.search)
@@ -19,20 +26,65 @@ export default function App() {
   const [cart, setCart] = useState([])
   const [orders, setOrders] = useState([])
   const [notice, setNotice] = useState('')
+  const [counterUser, setCounterUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(Boolean(supabase))
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [orderError, setOrderError] = useState('')
+  const [updatingOrder, setUpdatingOrder] = useState('')
   const categories = ['전체', ...new Set(menu.map(item => item.category))]
   const filtered = category === '전체' ? menu : menu.filter(item => item.category === category)
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart])
 
   useEffect(() => {
     if (!supabase) return
-    const channel = supabase.channel('counter-order-feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
-        if (payload.eventType === 'INSERT') {
-          setOrders(current => [payload.new, ...current])
-        }
-      }).subscribe()
-    return () => { supabase.removeChannel(channel) }
+    let alive = true
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!alive) return
+      if (error) setAuthError(error.message)
+      setCounterUser(data?.session?.user || null)
+      setAuthLoading(false)
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCounterUser(session?.user || null)
+      setAuthError('')
+    })
+    return () => {
+      alive = false
+      listener.subscription.unsubscribe()
+    }
   }, [])
+
+  useEffect(() => {
+    if (!supabase || !counterUser) {
+      setOrders([])
+      return
+    }
+    let active = true
+    const loadOrders = async () => {
+      setOrdersLoading(true)
+      setOrderError('')
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, table_number, status, total_amount, created_at, order_items(id, item_name, unit_price, quantity, line_total)')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (!active) return
+      if (error) setOrderError('주문을 불러오지 못했습니다. 직원 권한과 RLS 설정을 확인해 주세요. ' + error.message)
+      else setOrders(data || [])
+      setOrdersLoading(false)
+    }
+    loadOrders()
+    const channel = supabase.channel('counter-order-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, loadOrders)
+      .subscribe()
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [counterUser])
 
   function add(item) {
     setCart(current => {
@@ -49,7 +101,7 @@ export default function App() {
   async function submitOrder() {
     if (!cart.length) return
     if (supabase) {
-      const { data, error } = await supabase.rpc('create_customer_order', {
+      const { error } = await supabase.rpc('create_customer_order', {
         p_table_number: tableNumber,
         p_items: cart.map(item => ({ menu_item_id: item.id, quantity: item.quantity })),
         p_payment_method: 'counter',
@@ -58,13 +110,38 @@ export default function App() {
         setNotice('주문 접수에 실패했습니다: ' + error.message)
         return
       }
-      setOrders(current => [{ id: data, table_number: tableNumber, total_amount: total, status: 'pending', created_at: new Date().toISOString(), demo_items: cart }, ...current])
-    } else {
-      setOrders(current => [{ id: crypto.randomUUID(), table_number: tableNumber, total_amount: total, status: 'pending', created_at: new Date().toISOString(), demo_items: cart }, ...current])
     }
     setCart([])
     setNotice('주문이 접수되었습니다. 카운터에서 결제해 주세요.')
   }
+
+  async function signInCounter(event) {
+    event.preventDefault()
+    if (!supabase) return
+    setAuthError('')
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword })
+    if (error) setAuthError('로그인에 실패했습니다. 이메일과 비밀번호를 확인해 주세요. ' + error.message)
+    else setAuthPassword('')
+  }
+
+  async function signOutCounter() {
+    if (!supabase) return
+    const { error } = await supabase.auth.signOut()
+    if (error) setAuthError(error.message)
+    else setOrders([])
+  }
+
+  async function updateOrderStatus(order, status) {
+    if (!supabase) return
+    setUpdatingOrder(order.id)
+    setOrderError('')
+    const { error } = await supabase.from('orders').update({ status }).eq('id', order.id)
+    if (error) setOrderError('상태 변경에 실패했습니다. ' + error.message)
+    else setOrders(current => current.map(item => item.id === order.id ? { ...item, status } : item))
+    setUpdatingOrder('')
+  }
+
+  const isCounterTab = tab === 'counter'
 
   return <div className="app-shell">
     <header className="topbar">
@@ -80,7 +157,7 @@ export default function App() {
       </section>
       <nav className="tabs">
         <button className={tab === 'menu' ? 'active' : ''} onClick={() => setTab('menu')}>고객 메뉴</button>
-        <button className={tab === 'counter' ? 'active' : ''} onClick={() => setTab('counter')}>카운터 보기 <span className="count">{orders.length}</span></button>
+        <button className={tab === 'counter' ? 'active' : ''} onClick={() => setTab('counter')}>카운터 보기 <span className="count">{counterUser ? orders.length : '직원'}</span></button>
       </nav>
       {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')}>확인</button></div>}
       {tab === 'menu' ? <div className="content-grid">
@@ -100,9 +177,25 @@ export default function App() {
           <p className="payment-note">결제는 매장 카운터에서 진행됩니다.</p>
         </aside>
       </div> : <section className="counter-section">
-        <div className="section-heading"><div><p className="eyebrow">LIVE ORDERS</p><h2>주문 접수 현황</h2></div><span className="live-label">● 주문 {orders.length}건</span></div>
-        {!orders.length ? <div className="empty-orders">아직 접수된 주문이 없습니다.</div> : <div className="order-list">{orders.map(order => <article className="order-card" key={order.id}><div className="order-card-head"><b>테이블 {order.table_number}</b><span>{new Date(order.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span></div><p>{order.demo_items?.map(i => i.name + ' × ' + i.quantity).join(', ') || '주문 상세는 직원 인증 화면에서 확인할 수 있습니다.'}</p><strong>{money(order.total_amount || 0)}</strong><span className="status">{order.status === 'pending' ? '접수 대기' : order.status}</span></article>)}</div>}
-        <p className="counter-hint">실서비스에서는 직원 로그인과 주문 조회 권한(RLS)을 설정한 뒤 카운터 화면을 운영해야 합니다.</p>
+        {authLoading ? <div className="empty-orders">직원 로그인 상태를 확인하고 있습니다...</div> : !counterUser ? <div className="staff-login">
+          <div><p className="eyebrow">STAFF ACCESS</p><h2>카운터 직원 로그인</h2><p className="login-description">등록된 직원 계정으로 로그인하면 저장된 주문을 불러옵니다.</p></div>
+          {!isSupabaseConfigured ? <p className="form-error">Supabase 환경변수가 설정되지 않았습니다.</p> : <form onSubmit={signInCounter}>
+            <label>이메일<input type="email" autoComplete="username" value={authEmail} onChange={event => setAuthEmail(event.target.value)} placeholder="직원 이메일" required /></label>
+            <label>비밀번호<input type="password" autoComplete="current-password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} placeholder="비밀번호" required /></label>
+            {authError && <p className="form-error">{authError}</p>}
+            <button className="order-button" type="submit">로그인</button>
+          </form>}
+        </div> : <>
+          <div className="counter-toolbar"><div><p className="eyebrow">LIVE ORDERS</p><h2>주문 접수 현황</h2><span className="staff-email">{counterUser.email}</span></div><button className="logout-button" onClick={signOutCounter}>로그아웃</button></div>
+          <div className="section-heading counter-heading"><span className="live-label">● 주문 {orders.length}건</span><span className="refresh-label">{ordersLoading ? '불러오는 중...' : '최근 주문 100건'}</span></div>
+          {orderError && <p className="form-error">{orderError}</p>}
+          {ordersLoading && !orders.length ? <div className="empty-orders">저장된 주문을 불러오는 중입니다...</div> : !orders.length ? <div className="empty-orders">저장된 주문이 없습니다.</div> : <div className="order-list">{orders.map(order => <article className="order-card" key={order.id}>
+            <div className="order-card-head"><b>테이블 {order.table_number}</b><span>{new Date(order.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>
+            <div className="order-detail-items">{(order.order_items || []).map(item => <div key={item.id}><span>{item.item_name} × {item.quantity}</span><b>{money(item.line_total)}</b></div>)}</div>
+            <div className="order-card-bottom"><strong>{money(order.total_amount)}</strong><span className={'status status-' + order.status}>{statusLabels[order.status] || order.status}</span></div>
+            <div className="order-actions"><label>주문 상태<select value={order.status} disabled={updatingOrder === order.id} onChange={event => updateOrderStatus(order, event.target.value)}><option value="pending">접수 대기</option>{nextStatuses.map(status => <option key={status.value} value={status.value}>{status.label}</option>)}</select></label></div>
+          </article>)}</div>}
+        </>}
       </section>}
     </main>
     <footer><span>TABLE ORDER</span><span>편안한 식사 되세요 :)</span></footer>
