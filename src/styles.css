@@ -33,3 +33,25 @@
 .order-status-actions button.active.status-cancelled{border-color:#9b4b40;background:#9b4b40;color:#fff}
 .order-status-actions button:disabled{opacity:.55;cursor:wait}
 @media(max-width:520px){.order-filter-panel{padding:14px}.table-filter-row{align-items:stretch;flex-direction:column;gap:8px}.table-filter-row select{width:100%}.order-filter-panel .order-filter-options{display:flex;flex-wrap:wrap;gap:7px}.order-filter-panel .order-filter-options button{padding:8px 10px;font-size:10px}.order-status-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.order-status-actions button{padding:9px 6px;font-size:10px}}
+
+
+.menu-manager{display:grid;gap:16px;padding:20px 0 55px}
+.menu-admin-panel{padding:20px;border:1px solid #e5e9e1;border-radius:15px;background:#fff}
+.menu-admin-title h3{margin:0;color:#30382f;font-size:16px}
+.menu-admin-title p{margin:6px 0 16px;color:#899287;font-size:11px;line-height:1.6}
+.menu-category-form{display:flex;gap:9px}
+.menu-category-form input,.menu-item-form input,.menu-item-form select{width:100%;min-width:0;padding:12px;border:1px solid #dfe5da;border-radius:9px;background:#fff;color:#20251f;font:inherit;font-size:12px}
+.menu-category-form .order-button{width:auto;min-width:120px;padding:12px;white-space:nowrap}
+.menu-category-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.menu-category-chips button{padding:8px 14px;border:1px solid #dfe5da;border-radius:22px;background:#f7f8f5;color:#687365;font:600 11px inherit;cursor:pointer}
+.menu-category-chips button.selected{border-color:#244c3c;background:#244c3c;color:#fff}
+.menu-item-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.menu-item-form label{display:grid;gap:7px;color:#596457;font-size:11px;font-weight:600}
+.menu-item-form .order-button{grid-column:1/-1}
+.managed-menu-list{display:grid;gap:0}
+.managed-menu-list article{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 0;border-top:1px solid #edf0e9}
+.managed-menu-list article>div{display:grid;gap:5px;min-width:0}
+.managed-menu-list article b{color:#30382f;font-size:13px}
+.managed-menu-list article span{overflow:hidden;color:#929b90;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.managed-menu-list article strong{flex-shrink:0;color:#394337;font-size:13px}
+@media(max-width:520px){.menu-admin-panel{padding:15px}.menu-category-form{flex-direction:column}.menu-category-form .order-button{width:100%}.menu-item-form{grid-template-columns:1fr}.menu-item-form .order-button{grid-column:auto}}
