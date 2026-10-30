@@ -96,3 +96,13 @@
 .food-bottom button:hover{background:#e8eee4;transform:scale(1.05)}
 @media(max-width:800px){.food-art{height:205px}}
 @media(max-width:430px){.food-art{height:185px}.food-info{padding:38px 10px 11px}.food-info h3{font-size:13px}.food-info p{font-size:10px;margin-bottom:8px}.food-bottom b{font-size:13px}.food-bottom button{width:31px;height:31px}}
+
+/* Customer order status badge and pending-order cancellation */
+.customer-order-status{padding:6px 10px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;background:#edf3e9;color:#50734f}
+.customer-order-status.status-accepted{background:#e9f0ff;color:#4564a0}
+.customer-order-status.status-preparing{background:#fff3df;color:#96641c}
+.customer-order-status.status-served{background:#e6f4e9;color:#39764b}
+.customer-order-status.status-paid{background:#e6f4e9;color:#39764b}
+.customer-order-foot{align-items:center}
+.customer-cancel-button{padding:7px 12px;border:1px solid #efd6d2;border-radius:8px;background:#fff7f5;color:#a14c42;font:600 11px inherit;white-space:nowrap;cursor:pointer}
+.customer-cancel-button:disabled{opacity:.55;cursor:wait}
