@@ -215,10 +215,10 @@ export default function App() {
   return <div className="app-shell">
     <header className="topbar">
       <a className="brand" href="/"><span className="brand-mark">Q</span><span>TABLE<span className="brand-light"> ORDER</span></span></a>
-      {tab === 'menu' && !customerBlocked && <div className="table-chip">TABLE <b>{String(tableNumber ?? 1).padStart(2, '0')}</b></div>}
+      {(tab === 'menu' || tab === 'customer-orders') && !customerBlocked && <div className="table-chip">TABLE <b>{String(tableNumber ?? 1).padStart(2, '0')}</b></div>}
     </header>
     <main>
-      {tab === 'menu' ? customerBlocked ? <section className="table-error"><p className="eyebrow">TABLE ORDER</p><h2>{tableLoading ? '테이블 정보를 확인하고 있습니다...' : '테이블 QR 코드를 확인해 주세요.'}</h2><p>{tableError}</p></section> : <>
+      {(tab === 'menu' || tab === 'customer-orders') ? customerBlocked ? <section className="table-error"><p className="eyebrow">TABLE ORDER</p><h2>{tableLoading ? '테이블 정보를 확인하고 있습니다...' : '테이블 QR 코드를 확인해 주세요.'}</h2><p>{tableError}</p></section> : <>
         <section className="hero">
           <p className="eyebrow">WELCOME TO OUR TABLE · TABLE {String(tableNumber ?? 1).padStart(2, '0')}</p>
           <h1>맛있는 시간을<br /><em>주문해 보세요.</em></h1>
