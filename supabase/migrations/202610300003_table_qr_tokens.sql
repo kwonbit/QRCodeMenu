@@ -85,3 +85,17 @@ for update to authenticated using (public.is_counter_staff())
 with check (public.is_counter_staff());
 
 grant select, insert, update on public.restaurant_tables to authenticated;
+
+-- Keep table QR administration synchronized across counter browsers.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'restaurant_tables'
+  ) then
+    alter publication supabase_realtime add table public.restaurant_tables;
+  end if;
+end
+$$;
