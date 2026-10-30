@@ -80,3 +80,19 @@
 .menu-delete-button{padding:8px 11px;border:1px solid #efd6d2;border-radius:9px;background:#fff7f5;color:#a14c42;font:inherit;font-size:11px;cursor:pointer}
 .menu-delete-button:disabled,.managed-menu-actions button:disabled{opacity:.55;cursor:wait}
 @media(max-width:520px){.menu-form-actions{flex-direction:column}.menu-form-actions .logout-button{width:100%}.managed-menu-list article{align-items:flex-start;flex-direction:column}.managed-menu-info{width:100%}.managed-menu-actions{width:100%}.managed-menu-actions button{flex:1}}
+
+
+/* Customer menu cards: place menu details and add button over the food photo */
+.menu-card{position:relative;isolation:isolate;min-height:210px}
+.food-art{height:230px;display:block;overflow:hidden}
+.food-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.food-art span{z-index:2;top:11px;left:11px;background:#ffffffdf;color:#405044;backdrop-filter:blur(6px)}
+.food-info{position:absolute;z-index:3;left:0;right:0;bottom:0;padding:42px 14px 14px;background:linear-gradient( to bottom, transparent 0%, rgba(12,20,14,.68) 38%, rgba(12,20,14,.88) 100%);color:#fff}
+.food-info h3{color:#fff;font-size:15px;text-shadow:0 1px 3px #0008}
+.food-info p{margin:5px 0 10px;color:#f0f2ed;font-size:11px;line-height:1.45;text-shadow:0 1px 3px #0008}
+.food-bottom{gap:10px}
+.food-bottom b{color:#fff;font-size:15px;text-shadow:0 1px 3px #0008}
+.food-bottom button{width:34px;height:34px;flex-shrink:0;border:1px solid #ffffffaa;border-radius:50%;background:#fff;color:#244c3c;font-size:25px;line-height:1;box-shadow:0 2px 8px #0004}
+.food-bottom button:hover{background:#e8eee4;transform:scale(1.05)}
+@media(max-width:800px){.food-art{height:205px}}
+@media(max-width:430px){.food-art{height:185px}.food-info{padding:38px 10px 11px}.food-info h3{font-size:13px}.food-info p{font-size:10px;margin-bottom:8px}.food-bottom b{font-size:13px}.food-bottom button{width:31px;height:31px}}
