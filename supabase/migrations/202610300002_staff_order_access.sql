@@ -32,4 +32,5 @@ using (
   )
 );
 
-revoke all on function public.is_counter_staff() from public, anon;\ngrant execute on function public.is_counter_staff() to authenticated;
+revoke all on function public.is_counter_staff() from public, anon;
+grant execute on function public.is_counter_staff() to authenticated;
