@@ -34,6 +34,7 @@ export default function App() {
   const [menuSaving, setMenuSaving] = useState(false)
   const [cart, setCart] = useState([])
   const [orderSubmitting, setOrderSubmitting] = useState(false)
+  const [cancellingCustomerOrder, setCancellingCustomerOrder] = useState('')
   const [orders, setOrders] = useState([])
   const [selectedOrderStatuses, setSelectedOrderStatuses] = useState(['pending', 'accepted', 'preparing', 'served'])
   const [selectedOrderTable, setSelectedOrderTable] = useState('all')
@@ -201,6 +202,28 @@ export default function App() {
   function changeQuantity(id, amount) {
     setCart(current => current.map(item => item.id === id ? { ...item, quantity: item.quantity + amount } : item).filter(item => item.quantity > 0))
   }
+  async function cancelCustomerOrder(order) {
+    if (!tableToken || order.status !== 'pending' || cancellingCustomerOrder) return
+    if (!window.confirm('이 주문을 취소하시겠습니까?')) return
+    setCancellingCustomerOrder(order.id)
+    setNotice('주문 취소를 처리하고 있습니다...')
+    try {
+      const { data, error } = await supabase.rpc('cancel_customer_order_by_token', {
+        p_table_token: tableToken,
+        p_order_id: order.id,
+      })
+      if (error) throw error
+      if (!data) throw new Error('이미 주문 상태가 변경되어 취소할 수 없습니다.')
+      setCustomerOrders(current => current.map(item => item.id === order.id ? { ...item, status: 'cancelled' } : item))
+      setNotice('주문이 취소되었습니다.')
+    } catch (error) {
+      console.error('주문 취소 오류:', error)
+      setNotice('주문 취소에 실패했습니다: ' + (error?.message || '알 수 없는 오류'))
+    } finally {
+      setCancellingCustomerOrder('')
+    }
+  }
+
   async function submitOrder() {
     if (orderSubmitting) return
     if (!cart.length) { setNotice('주문할 메뉴를 먼저 담아 주세요.'); return }
@@ -412,7 +435,7 @@ export default function App() {
         </section>
         <nav className="tabs customer-tabs"><button className={tab === 'menu' ? 'active' : ''} onClick={() => setTab('menu')}>메뉴 주문</button><button className={tab === 'customer-orders' ? 'active' : ''} onClick={() => setTab('customer-orders')}>주문 내역 <span className="count">{visibleCustomerOrders.length}</span></button><button onClick={() => setTab('counter')}>카운터 / 관리자</button></nav>
         {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice('')}>확인</button></div>}
-        {tab === 'customer-orders' ? <section className="customer-history"><div className="section-heading"><div><p className="eyebrow">MY ORDERS</p><h2>주문 내역</h2></div><span className="menu-count">{visibleCustomerOrders.length} ORDERS</span></div><p className="history-help">이 휴대폰에서 QR 코드로 주문한 내역입니다. 결제는 매장 카운터에서 진행해 주세요.</p>{customerOrdersLoading ? <div className="empty-orders">주문 내역을 불러오는 중...</div> : !visibleCustomerOrders.length ? <div className="empty-orders">결제 전이고 취소되지 않은 주문이 없습니다.</div> : <div className="customer-order-list">{visibleCustomerOrders.map(order => <article className="customer-order-card" key={order.id}><div className="customer-order-head"><div><b>주문 #{String(order.id).slice(0,8).toUpperCase()}</b><small>{new Date(order.created_at).toLocaleString('ko-KR')}</small></div><span className={order.payment_status === 'paid' ? 'paid-label' : 'unpaid-label'}>{order.payment_status === 'paid' ? '결제 완료' : '결제 전'}</span></div><div className="customer-order-items">{(order.items || []).map((item,index) => <div key={index}><span>{item.item_name} × {item.quantity}</span><b>{money(item.line_total)}</b></div>)}</div><div className="customer-order-total"><span>주문 합계</span><b>{money(order.total_amount)}</b></div><div className="customer-order-foot"><span>주문 상태: {statusLabels[order.status] || order.status}</span><span>{order.payment_status === 'paid' ? '결제가 완료되었습니다.' : '카운터에서 결제해 주세요.'}</span></div></article>)}</div>} {!customerOrdersLoading && <section className="customer-order-summary"><div className="customer-summary-heading"><div><p className="eyebrow">ORDER SUMMARY</p><h3>주문 현황</h3></div><span>현재 미결제 주문 기준</span></div><div className="customer-status-grid">{customerOrderStatusCounts.map(item => <div className={'customer-status-item status-' + item.status} key={item.status}><span>{item.label}</span><b>{item.count}<small>건</small></b></div>)}</div><div className="customer-summary-totals"><div><span>총 주문 건수</span><b>{visibleCustomerOrders.length}<small>건</small></b></div><div className="customer-summary-amount"><span>총 주문 금액</span><b>{money(visibleCustomerOrderTotal)}</b></div></div></section>}</section> : <div className="content-grid">
+        {tab === 'customer-orders' ? <section className="customer-history"><div className="section-heading"><div><p className="eyebrow">MY ORDERS</p><h2>주문 내역</h2></div><span className="menu-count">{visibleCustomerOrders.length} ORDERS</span></div><p className="history-help">이 휴대폰에서 QR 코드로 주문한 내역입니다. 결제는 매장 카운터에서 진행해 주세요.</p>{customerOrdersLoading ? <div className="empty-orders">주문 내역을 불러오는 중...</div> : !visibleCustomerOrders.length ? <div className="empty-orders">결제 전이고 취소되지 않은 주문이 없습니다.</div> : <div className="customer-order-list">{visibleCustomerOrders.map(order => <article className="customer-order-card" key={order.id}><div className="customer-order-head"><div><b>주문 #{String(order.id).slice(0,8).toUpperCase()}</b><small>{new Date(order.created_at).toLocaleString('ko-KR')}</small></div><span className={'customer-order-status status-' + (order.payment_status === 'paid' ? 'paid' : order.status)}>{statusLabels[order.payment_status === 'paid' ? 'paid' : order.status] || order.status}</span></div><div className="customer-order-items">{(order.items || []).map((item,index) => <div key={index}><span>{item.item_name} × {item.quantity}</span><b>{money(item.line_total)}</b></div>)}</div><div className="customer-order-total"><span>주문 합계</span><b>{money(order.total_amount)}</b></div><div className="customer-order-foot"><span>{order.payment_status === 'paid' ? '결제가 완료되었습니다.' : '결제는 매장 카운터에서 진행됩니다.'}</span>{order.status === 'pending' && order.payment_status !== 'paid' && <button type="button" className="customer-cancel-button" disabled={cancellingCustomerOrder === order.id} onClick={() => cancelCustomerOrder(order)}>{cancellingCustomerOrder === order.id ? '취소 처리 중...' : '주문 취소'}</button>}</div></article>)}</div>} {!customerOrdersLoading && <section className="customer-order-summary"><div className="customer-summary-heading"><div><p className="eyebrow">ORDER SUMMARY</p><h3>주문 현황</h3></div><span>현재 미결제 주문 기준</span></div><div className="customer-status-grid">{customerOrderStatusCounts.map(item => <div className={'customer-status-item status-' + item.status} key={item.status}><span>{item.label}</span><b>{item.count}<small>건</small></b></div>)}</div><div className="customer-summary-totals"><div><span>총 주문 건수</span><b>{visibleCustomerOrders.length}<small>건</small></b></div><div className="customer-summary-amount"><span>총 주문 금액</span><b>{money(visibleCustomerOrderTotal)}</b></div></div></section>}</section> : <div className="content-grid">
           <section className="menu-section">
             <div className="section-heading"><div><p className="eyebrow">OUR MENU</p><h2>오늘의 메뉴</h2></div><span className="menu-count">{filtered.length} ITEMS</span></div>
             <div className="categories">{categories.map(item => <button key={item} className={category === item ? 'selected' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
