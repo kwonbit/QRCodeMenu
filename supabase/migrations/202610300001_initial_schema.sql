@@ -133,3 +133,37 @@ grant execute on function public.create_customer_order(integer, jsonb, text) to 
 -- IMPORTANT:
 -- Do not expose orders/order_items to anon. Before production, add staff authentication,
 -- staff-only SELECT/UPDATE RLS policies, and enable orders in the Supabase Realtime publication.
+
+
+-- Initial sample menu data used by the starter React screen.
+insert into public.menu_items (id, category_id, name, description, price, sort_order)
+select seed.id, c.id, seed.name, seed.description, seed.price, seed.sort_order
+from (values
+  ('hamburg', '식사', '수제 함박스테이크', '촉촉한 함박과 데미글라스 소스', 13500, 1),
+  ('pasta', '식사', '새우 크림 파스타', '통통한 새우와 고소한 크림', 14500, 2),
+  ('rice', '식사', '불고기 덮밥', '달콤 짭조름한 한 끼', 11000, 3),
+  ('chicken', '사이드', '치킨 가라아게', '바삭하게 튀긴 한입 치킨', 9000, 1),
+  ('lemon', '음료', '레몬에이드', '상큼하고 시원한 에이드', 4500, 1),
+  ('coffee', '음료', '아메리카노', '깔끔한 향의 커피', 3500, 2)
+) as seed(id, category_name, name, description, price, sort_order)
+join public.menu_categories c on c.name = seed.category_name
+on conflict (id) do update set
+  category_id = excluded.category_id,
+  name = excluded.name,
+  description = excluded.description,
+  price = excluded.price,
+  sort_order = excluded.sort_order;
+
+-- Add orders to Supabase Realtime if not already published.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'orders'
+  ) then
+    alter publication supabase_realtime add table public.orders;
+  end if;
+end
+$$;
