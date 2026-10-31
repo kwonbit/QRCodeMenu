@@ -604,3 +604,30 @@
   .delivery-address-input{grid-template-columns:minmax(0,1fr) 78px;gap:6px}
   .find-location-button{font-size:10px}
 }
+
+
+/* Search phone orders by customer phone number or delivery address */
+.phone-order-search{
+  display:grid;
+  gap:6px;
+  margin-top:-4px;
+  padding:12px 14px;
+  border:1px solid #e2e8de;
+  border-radius:10px;
+  background:#f8faf6;
+}
+.phone-order-search label{color:#596456;font-size:12px;font-weight:700}
+.phone-order-search input{
+  width:100%;
+  min-width:0;
+  padding:10px 12px;
+  border:1px solid #dfe5da;
+  border-radius:8px;
+  background:#fff;
+  color:#20251f;
+  font:inherit;
+  font-size:12px;
+}
+.phone-order-search small{color:#899287;font-size:10px;line-height:1.5}
+.theme-dark .phone-order-search{border-color:#465247;background:#29332b}
+.theme-dark .phone-order-search label,.theme-dark .phone-order-search small{color:#cbd6c8}
