@@ -33,9 +33,9 @@ export default function App() {
   const [editingMenuId, setEditingMenuId] = useState(null)
   const [editingMenuImageUrl, setEditingMenuImageUrl] = useState('')
   const [menuSaving, setMenuSaving] = useState(false)
-  const [menuOptionDrafts, setMenuOptionDrafts] = useState([])
+  const [menuOptionDrafts, setMenuOptionDrafts] = useState({ option1: [], option2: [] })
   const [optionMenuItem, setOptionMenuItem] = useState(null)
-  const [selectedMenuOptions, setSelectedMenuOptions] = useState([])
+  const [selectedMenuOptions, setSelectedMenuOptions] = useState({ option1: '', option2: '' })
   const [cart, setCart] = useState([])
   const [orderSubmitting, setOrderSubmitting] = useState(false)
   const [cancellingCustomerOrder, setCancellingCustomerOrder] = useState('')
@@ -110,7 +110,7 @@ export default function App() {
       const [{ data: categoryRows, error: categoryError }, { data: menuRows, error: menuError }, { data: optionRows, error: optionError }] = await Promise.all([
         supabase.from('menu_categories').select('id, name, sort_order, is_active').eq('is_active', true).order('sort_order'),
         supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').eq('is_available', true).order('sort_order'),
-        supabase.from('menu_options').select('id, menu_item_id, name, additional_price').eq('is_available', true).order('sort_order')
+        supabase.from('menu_options').select('id, menu_item_id, name, additional_price, option_group').eq('is_available', true).order('sort_order')
       ])
       if (!active) return
       if (categoryError) setNotice('음식종류 조회 실패: ' + categoryError.message)
@@ -160,7 +160,7 @@ export default function App() {
       const [{ data: categoryRows, error: categoryError }, { data: menuRows, error: menuError }, { data: optionRows, error: optionError }] = await Promise.all([
         supabase.from('menu_categories').select('id, name, sort_order, is_active').order('sort_order'),
         supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').order('sort_order'),
-        supabase.from('menu_options').select('id, menu_item_id, name, additional_price').eq('is_available', true).order('sort_order')
+        supabase.from('menu_options').select('id, menu_item_id, name, additional_price, option_group').eq('is_available', true).order('sort_order')
       ])
       if (!active) return
       if (categoryError) setOrderError('음식종류 조회 실패: ' + categoryError.message)
@@ -208,7 +208,7 @@ export default function App() {
       return found ? current.map(row => row.cartKey === cartKey ? { ...row, quantity: row.quantity + 1 } : row) : [...current, { ...item, options, cartKey, unitPrice: item.price + optionPrice, quantity: 1 }]
     })
     setOptionMenuItem(null)
-    setSelectedMenuOptions([])
+    setSelectedMenuOptions({ option1: '', option2: '' })
     setNotice(item.name + ' 메뉴를 담았습니다.')
   }
   function openMenuOptions(item) {
@@ -376,7 +376,7 @@ export default function App() {
     setMenuSaving(false)
   }
   function resetMenuForm() {
-    setMenuOptionDrafts([])
+    setMenuOptionDrafts({ option1: [], option2: [] })
     setEditingMenuId(null)
     setNewMenuName('')
     setNewMenuDescription('')
@@ -393,9 +393,9 @@ export default function App() {
     setNewMenuPrice(String(item.price))
     setNewMenuImage(null)
     setEditingMenuImageUrl(item.image_url || '')
-    supabase.from('menu_options').select('id, name, additional_price').eq('menu_item_id', item.id).eq('is_available', true).order('sort_order').then(({ data, error }) => {
+    supabase.from('menu_options').select('id, name, additional_price, option_group').eq('menu_item_id', item.id).eq('is_available', true).order('sort_order').then(({ data, error }) => {
       if (error) setOrderError('메뉴 옵션 조회 실패: ' + error.message)
-      else setMenuOptionDrafts((data || []).map(option => ({ name: option.name, additional_price: String(option.additional_price) })))
+      else setMenuOptionDrafts({ option1: (data || []).filter(option => option.option_group === 'option1').map(option => ({ name: option.name, additional_price: String(option.additional_price) })), option2: (data || []).filter(option => option.option_group === 'option2').map(option => ({ name: option.name, additional_price: String(option.additional_price) })) })
     })
     setMenuImagePreview(item.image_url || '')
     setOrderError('')
@@ -431,9 +431,9 @@ export default function App() {
     if (!error) {
       const { error: removeOptionsError } = await supabase.from('menu_options').delete().eq('menu_item_id', editingMenuId)
       if (removeOptionsError) { setOrderError('기존 옵션 정리 실패: ' + removeOptionsError.message); setMenuSaving(false); return }
-      const options = menuOptionDrafts.filter(option => option.name.trim()).map((option, index) => ({
-        menu_item_id: editingMenuId, name: option.name.trim(), additional_price: Math.max(0, Number(option.additional_price) || 0), sort_order: index + 1
-      }))
+      const options = ['option1', 'option2'].flatMap(group => menuOptionDrafts[group].filter(option => option.name.trim()).map((option, index) => ({
+        menu_item_id: editingMenuId, option_group: group, name: option.name.trim(), additional_price: Math.max(0, Number(option.additional_price) || 0), sort_order: index + 1
+      })))
       if (options.length) {
         const { error: optionError } = await supabase.from('menu_options').insert(options)
         if (optionError) { setOrderError('메뉴 옵션 저장 실패: ' + optionError.message); setMenuSaving(false); return }
@@ -487,9 +487,9 @@ export default function App() {
     const { error } = await supabase.from('menu_items').insert({ id, category_id: selectedMenuCategory, name: newMenuName.trim(), description: newMenuDescription.trim(), price, image_url, sort_order: menu.filter(item => item.category_id === selectedMenuCategory).length + 1 })
     if (error) setOrderError('메뉴 등록 실패: ' + error.message)
     else {
-      const options = menuOptionDrafts.filter(option => option.name.trim()).map((option, index) => ({
-        menu_item_id: id, name: option.name.trim(), additional_price: Math.max(0, Number(option.additional_price) || 0), sort_order: index + 1
-      }))
+      const options = ['option1', 'option2'].flatMap(group => menuOptionDrafts[group].filter(option => option.name.trim()).map((option, index) => ({
+        menu_item_id: id, option_group: group, name: option.name.trim(), additional_price: Math.max(0, Number(option.additional_price) || 0), sort_order: index + 1
+      })))
       if (options.length) {
         const { error: optionError } = await supabase.from('menu_options').insert(options)
         if (optionError) { setOrderError('메뉴 옵션 저장 실패: ' + optionError.message); setMenuSaving(false); return }
@@ -571,7 +571,7 @@ export default function App() {
           </> : tab === 'menu-management' ? <div className="menu-manager">
             <div className="section-heading"><div><p className="eyebrow">MENU MANAGEMENT</p><h2>음식종류 및 메뉴 관리</h2></div><span className="menu-count">{menuCategories.length} CATEGORIES</span></div>
             <section className="menu-admin-panel"><div className="menu-admin-title"><h3>음식종류 등록 / 수정 / 삭제</h3><p>음식종류를 선택한 뒤 수정 또는 삭제하거나, 새 이름을 입력해 추가할 수 있습니다.</p></div><form className="menu-category-form" onSubmit={event => { event.preventDefault(); if (editingCategoryId) saveMenuCategory(event); else createMenuCategory(event) }}><input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="음식종류 입력 (예: 면류, 밥류, 요리류)" maxLength="40" required /><div className="menu-category-form-actions"><button type="button" className="order-button" disabled={menuSaving} onClick={createMenuCategory}>추가</button><button type="button" className="logout-button" disabled={menuSaving || !selectedMenuCategory} onClick={() => { if (editingCategoryId) saveMenuCategory({ preventDefault: () => {} }); else { const selected = menuCategories.find(item => item.id === selectedMenuCategory); if (selected) startEditCategory(selected) } }}>{editingCategoryId ? '수정 저장' : '수정'}</button><button type="button" className="menu-delete-button" disabled={menuSaving || !selectedMenuCategory} onClick={() => { const selected = menuCategories.find(item => item.id === selectedMenuCategory); if (selected) deleteMenuCategory(selected) }}>삭제</button>{editingCategoryId && <button type="button" className="category-cancel-button" disabled={menuSaving} onClick={cancelEditCategory}>취소</button>}</div></form><div className="menu-category-manage-list">{menuCategories.map(item => <button type="button" key={item.id} className={'menu-category-chip ' + (selectedMenuCategory === item.id ? 'selected' : '')} onClick={() => { setSelectedMenuCategory(item.id); if (editingCategoryId) cancelEditCategory() }}>{item.name}</button>)}</div></section>
-            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{editingMenuId ? '메뉴 수정' : (menuCategories.find(item => item.id === selectedMenuCategory)?.name || '음식종류') + ' 메뉴 등록'}</h3><p>{editingMenuId ? '메뉴 정보를 수정한 뒤 저장해 주세요.' : '선택한 음식종류 아래에 메뉴를 추가합니다.'}</p></div>{!menuCategories.length ? <div className="empty-orders">먼저 음식종류를 등록해 주세요.</div> : <form className="menu-item-form" onSubmit={editingMenuId ? updateMenuItem : createMenuItem}><label>음식종류<select value={selectedMenuCategory} onChange={e => setSelectedMenuCategory(e.target.value)} required>{menuCategories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>메뉴명<input value={newMenuName} onChange={e => setNewMenuName(e.target.value)} placeholder="예: 김치찌개" maxLength="100" required /></label><label>메뉴 설명<input value={newMenuDescription} onChange={e => setNewMenuDescription(e.target.value)} placeholder="메뉴에 대한 간단한 설명" maxLength="200" /></label><label>판매 가격(원)<input type="number" min="0" step="100" value={newMenuPrice} onChange={e => setNewMenuPrice(e.target.value)} placeholder="예: 9000" required /></label><label className="menu-image-field">음식 사진<input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0] || null; setNewMenuImage(file); setMenuImagePreview(file ? URL.createObjectURL(file) : editingMenuImageUrl) }} /><small>JPG, PNG, WEBP · 최대 5MB</small></label>{menuImagePreview && <div className="menu-image-preview"><img src={menuImagePreview} alt="음식 사진 미리보기" /><button type="button" onClick={() => { setNewMenuImage(null); setEditingMenuImageUrl(''); setMenuImagePreview('') }}>사진 제거</button></div>}<div className="menu-options-editor"><div className="menu-options-heading"><b>메뉴 옵션 관리</b><button type="button" className="logout-button" onClick={() => setMenuOptionDrafts(current => [...current, { name: '', additional_price: '0' }])}>+ 옵션 추가</button></div><p>예: 곱빼기 +2,000원, 면 추가 +1,000원</p>{menuOptionDrafts.map((option, index) => <div className="menu-option-draft" key={index}><input aria-label="옵션명" value={option.name} onChange={e => setMenuOptionDrafts(current => current.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} placeholder="옵션명 (예: 곱빼기)" /><input aria-label="추가 금액" type="number" min="0" step="100" value={option.additional_price} onChange={e => setMenuOptionDrafts(current => current.map((row, i) => i === index ? { ...row, additional_price: e.target.value } : row))} placeholder="추가 금액" /><button type="button" className="menu-delete-button" onClick={() => setMenuOptionDrafts(current => current.filter((_, i) => i !== index))}>삭제</button></div>)}</div><div className="menu-form-actions"><button className="order-button" disabled={menuSaving}>{menuSaving ? (editingMenuId ? "저장 중..." : "등록 중...") : (editingMenuId ? "수정 내용 저장" : "메뉴 등록")}</button>{editingMenuId && <button type="button" className="logout-button" disabled={menuSaving} onClick={resetMenuForm}>수정 취소</button>}</div></form>}</section>
+            <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{editingMenuId ? '메뉴 수정' : (menuCategories.find(item => item.id === selectedMenuCategory)?.name || '음식종류') + ' 메뉴 등록'}</h3><p>{editingMenuId ? '메뉴 정보를 수정한 뒤 저장해 주세요.' : '선택한 음식종류 아래에 메뉴를 추가합니다.'}</p></div>{!menuCategories.length ? <div className="empty-orders">먼저 음식종류를 등록해 주세요.</div> : <form className="menu-item-form" onSubmit={editingMenuId ? updateMenuItem : createMenuItem}><label>음식종류<select value={selectedMenuCategory} onChange={e => setSelectedMenuCategory(e.target.value)} required>{menuCategories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>메뉴명<input value={newMenuName} onChange={e => setNewMenuName(e.target.value)} placeholder="예: 김치찌개" maxLength="100" required /></label><label>메뉴 설명<input value={newMenuDescription} onChange={e => setNewMenuDescription(e.target.value)} placeholder="메뉴에 대한 간단한 설명" maxLength="200" /></label><label>판매 가격(원)<input type="number" min="0" step="100" value={newMenuPrice} onChange={e => setNewMenuPrice(e.target.value)} placeholder="예: 9000" required /></label><label className="menu-image-field">음식 사진<input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0] || null; setNewMenuImage(file); setMenuImagePreview(file ? URL.createObjectURL(file) : editingMenuImageUrl) }} /><small>JPG, PNG, WEBP · 최대 5MB</small></label>{menuImagePreview && <div className="menu-image-preview"><img src={menuImagePreview} alt="음식 사진 미리보기" /><button type="button" onClick={() => { setNewMenuImage(null); setEditingMenuImageUrl(''); setMenuImagePreview('') }}>사진 제거</button></div>}<div className="menu-options-editor"><div className="menu-options-heading"><b>메뉴 옵션 관리</b><span>옵션 1과 옵션 2를 각각 설정할 수 있습니다.</span></div>{['option1', 'option2'].map((group, groupIndex) => <div className="menu-option-group" key={group}><div className="menu-option-group-heading"><b>옵션 {groupIndex + 1}</b><button type="button" className="logout-button" onClick={() => setMenuOptionDrafts(current => ({ ...current, [group]: [...current[group], { name: '', additional_price: '0' }] }))}>+ 항목 추가</button></div>{menuOptionDrafts[group].map((option, index) => <div className="menu-option-draft" key={index}><input aria-label={'옵션 ' + (groupIndex + 1) + ' 항목명'} value={option.name} onChange={e => setMenuOptionDrafts(current => ({ ...current, [group]: current[group].map((row, i) => i === index ? { ...row, name: e.target.value } : row) }))} placeholder={groupIndex === 0 ? '예: 보통, 곱빼기' : '예: 순한맛, 매운맛'} /><input aria-label="추가 금액" type="number" min="0" step="100" value={option.additional_price} onChange={e => setMenuOptionDrafts(current => ({ ...current, [group]: current[group].map((row, i) => i === index ? { ...row, additional_price: e.target.value } : row) }))} placeholder="추가 금액" /><button type="button" className="menu-delete-button" onClick={() => setMenuOptionDrafts(current => ({ ...current, [group]: current[group].filter((_, i) => i !== index) }))}>삭제</button></div>)}</div>)}</div><div className="menu-form-actions"><button className="order-button" disabled={menuSaving}>{menuSaving ? (editingMenuId ? "저장 중..." : "등록 중...") : (editingMenuId ? "수정 내용 저장" : "메뉴 등록")}</button>{editingMenuId && <button type="button" className="logout-button" disabled={menuSaving} onClick={resetMenuForm}>수정 취소</button>}</div></form>}</section>
             <section className="menu-admin-panel"><div className="menu-admin-title"><h3>{menuCategories.find(item => item.id === selectedMenuCategory)?.name || '선택한 종류'} 메뉴 목록</h3><p>선택한 음식종류에 등록된 판매 메뉴입니다.</p></div><div className="managed-menu-list">{menu.filter(item => item.category_id === selectedMenuCategory).map(item => <article key={item.id}><div className="managed-menu-info">{item.image_url && <img src={item.image_url} alt={item.name} />}<div><b>{item.name}</b><span>{item.desc || '설명 없음'}</span><strong>{money(item.price)}</strong></div></div><div className="managed-menu-actions"><button type="button" className="logout-button" disabled={menuSaving} onClick={() => startEditMenu(item)}>수정</button><button type="button" className="menu-delete-button" disabled={menuSaving} onClick={() => deleteMenuItem(item)}>삭제</button></div></article>)}{!menu.some(item => item.category_id === selectedMenuCategory) && <div className="empty-orders">등록된 메뉴가 없습니다.</div>}</div></section>
           </div> : <div className="table-manager">
             <div className="section-heading"><div><p className="eyebrow">TABLE QR CODES</p><h2>테이블별 QR 코드</h2></div><span className="menu-count">{tables.length} TABLES</span></div>
@@ -582,7 +582,7 @@ export default function App() {
         </>}
       </section>}
     </main>
-    {optionMenuItem && <div className="option-modal-backdrop" onClick={() => setOptionMenuItem(null)}><section className="option-modal" onClick={event => event.stopPropagation()}><button type="button" className="option-modal-close" onClick={() => setOptionMenuItem(null)}>×</button><p className="eyebrow">CUSTOMIZE YOUR MENU</p><h2>{optionMenuItem.name}</h2><p className="option-base-price">기본 가격 {money(optionMenuItem.price)}</p><div className="customer-option-list">{optionMenuItem.options.map(option => <label key={option.id}><input type="checkbox" checked={selectedMenuOptions.includes(option.id)} onChange={event => setSelectedMenuOptions(current => event.target.checked ? [...current, option.id] : current.filter(id => id !== option.id))} /><span>{option.name}</span><b>+{money(option.additional_price)}</b></label>)}</div><div className="option-modal-total"><span>선택 옵션 포함 금액</span><b>{money(optionMenuItem.price + optionMenuItem.options.filter(option => selectedMenuOptions.includes(option.id)).reduce((sum, option) => sum + Number(option.additional_price), 0))}</b></div><button type="button" className="order-button" onClick={() => add(optionMenuItem, optionMenuItem.options.filter(option => selectedMenuOptions.includes(option.id)))}>장바구니 담기</button></section></div>}
+    {optionMenuItem && <div className="option-modal-backdrop" onClick={() => setOptionMenuItem(null)}><section className="option-modal" onClick={event => event.stopPropagation()}><button type="button" className="option-modal-close" onClick={() => setOptionMenuItem(null)}>×</button><p className="eyebrow">CUSTOMIZE YOUR MENU</p><h2>{optionMenuItem.name}</h2><p className="option-base-price">기본 가격 {money(optionMenuItem.price)}</p>{['option1', 'option2'].map((group, groupIndex) => { const groupOptions = optionMenuItem.options.filter(option => option.option_group === group); return groupOptions.length ? <div className="customer-option-group" key={group}><h3>옵션 {groupIndex + 1}</h3><div className="customer-option-list">{groupOptions.map(option => <label key={option.id}><input type="radio" name={'menu-option-' + group} checked={selectedMenuOptions[group] === option.id} onChange={() => setSelectedMenuOptions(current => ({ ...current, [group]: option.id }))} /><span>{option.name}</span><b>{Number(option.additional_price) > 0 ? '+' + money(option.additional_price) : '무료'}</b></label>)}</div></div> : null })}<div className="option-modal-total"><span>선택 옵션 포함 금액</span><b>{money(optionMenuItem.price + optionMenuItem.options.filter(option => Object.values(selectedMenuOptions).includes(option.id)).reduce((sum, option) => sum + Number(option.additional_price), 0))}</b></div><button type="button" className="order-button" onClick={() => add(optionMenuItem, optionMenuItem.options.filter(option => Object.values(selectedMenuOptions).includes(option.id)))}>장바구니 담기</button></section></div>}
     <footer><span>TABLE ORDER</span><span>편안한 식사 되세요 :)</span></footer>
   </div>
 }
