@@ -5,6 +5,8 @@ import { isSupabaseConfigured, supabase } from './lib/supabase'
 const money = value => new Intl.NumberFormat('ko-KR').format(value || 0) + '원'
 const statusLabels = { pending: '접수 대기', accepted: '주문 확인', preparing: '조리 시작', served: '제공 완료', paid: '결제 완료', cancelled: '주문 취소' }
 const orderStatusOptions = Object.entries(statusLabels).map(([value, label]) => ({ value, label }))
+const PHONE_STORAGE_KEY = 'qrcodemenu-phone-order-phone'
+const getSavedPhone = () => { try { return localStorage.getItem(PHONE_STORAGE_KEY) || '' } catch { return '' } }
 
 export default function App() {
   const params = new URLSearchParams(window.location.search)
@@ -16,7 +18,7 @@ export default function App() {
   })
   const [customerOrders, setCustomerOrders] = useState([])
   const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false)
-  const [phoneHistoryPhone, setPhoneHistoryPhone] = useState('')
+  const [phoneHistoryPhone, setPhoneHistoryPhone] = useState(getSavedPhone)
   const [phoneHistorySearched, setPhoneHistorySearched] = useState(false)
   const [phoneHistoryError, setPhoneHistoryError] = useState('')
   const [tableLoading, setTableLoading] = useState(Boolean(tableToken))
@@ -41,7 +43,7 @@ export default function App() {
   const [selectedMenuOptions, setSelectedMenuOptions] = useState({ option1: '', option2: '' })
   const [cart, setCart] = useState([])
   const [phoneOrderOpen, setPhoneOrderOpen] = useState(false)
-  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerPhone, setCustomerPhone] = useState(getSavedPhone)
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [requestNote, setRequestNote] = useState('')
   const [orderSubmitting, setOrderSubmitting] = useState(false)
@@ -245,6 +247,7 @@ export default function App() {
     try {
       const { data, error } = await supabase.rpc('get_phone_orders_by_phone', { p_customer_phone: phone })
       if (error) throw error
+      try { localStorage.setItem(PHONE_STORAGE_KEY, digits) } catch {}
       setCustomerOrders(Array.isArray(data) ? data : [])
     } catch (error) {
       setPhoneHistoryError('주문 내역 조회에 실패했습니다: ' + (error?.message || '다시 시도해 주세요.'))
@@ -305,10 +308,14 @@ export default function App() {
           localStorage.setItem('qrcodemenu-orders-' + tableToken, JSON.stringify(next))
           return next
         })
+      } else {
+        const savedPhone = customerPhone.trim()
+        try { localStorage.setItem(PHONE_STORAGE_KEY, savedPhone) } catch {}
+        setCustomerPhone(savedPhone)
+        setPhoneHistoryPhone(savedPhone)
       }
       setCart([])
       setPhoneOrderOpen(false)
-      setCustomerPhone('')
       setDeliveryAddress('')
       setRequestNote('')
       setNotice(tableToken ? '주문이 접수되었습니다. 카운터에서 결제해 주세요.' : '전화주문이 접수되었습니다. 입력하신 연락처로 확인 후 안내드리겠습니다.')
