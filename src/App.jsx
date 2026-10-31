@@ -156,9 +156,10 @@ export default function App() {
       setOrdersLoading(false)
     }
     const loadMenuManagement = async () => {
-      const [{ data: categoryRows, error: categoryError }, { data: menuRows, error: menuError }] = await Promise.all([
+      const [{ data: categoryRows, error: categoryError }, { data: menuRows, error: menuError }, { data: optionRows, error: optionError }] = await Promise.all([
         supabase.from('menu_categories').select('id, name, sort_order, is_active').order('sort_order'),
-        supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').order('sort_order')
+        supabase.from('menu_items').select('id, category_id, name, description, price, image_url, is_available, sort_order, menu_categories(name)').order('sort_order'),
+        supabase.from('menu_options').select('id, menu_item_id, name, additional_price').eq('is_available', true).order('sort_order')
       ])
       if (!active) return
       if (categoryError) setOrderError('음식종류 조회 실패: ' + categoryError.message)
@@ -168,7 +169,7 @@ export default function App() {
         if (!selectedMenuCategory && activeCategories.length) setSelectedMenuCategory(activeCategories[0].id)
       }
       if (menuError) setOrderError('메뉴 조회 실패: ' + menuError.message)
-      else setMenu((menuRows || []).filter(item => item.is_available).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, image_url: item.image_url, emoji: '🍽️' })))
+      else setMenu((menuRows || []).filter(item => item.is_available).map(item => ({ id: item.id, category: item.menu_categories?.name || '', category_id: item.category_id, name: item.name, desc: item.description, price: item.price, image_url: item.image_url, emoji: '🍽️', options: (optionRows || []).filter(option => option.menu_item_id === item.id) })))
     }
     const loadTables = async () => {
       const { data, error } = await supabase.from('restaurant_tables').select('id, table_number, table_token, is_active').order('table_number')
