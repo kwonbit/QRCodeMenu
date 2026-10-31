@@ -158,3 +158,87 @@
 .menu-category-chip{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:8px 15px;border:1px solid #dfe5da;border-radius:22px;background:#f7f8f5;color:#687365;font:600 11px inherit;cursor:pointer;white-space:nowrap}
 .menu-category-chip.selected{border-color:#244c3c;background:#244c3c;color:#fff}
 @media(max-width:640px){.menu-category-form{grid-template-columns:1fr}.menu-category-form-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.menu-category-form-actions button{width:100%;min-width:0;padding:11px 8px}.menu-category-manage-list{gap:7px}}
+
+
+/* 음식종류 관리: 입력란과 3개 액션 버튼을 한 줄로 고정 */
+.menu-category-form{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  align-items:center;
+  gap:8px;
+  width:100%;
+}
+.menu-category-form>input{min-width:0;width:100%}
+.menu-category-form-actions{
+  display:flex !important;
+  flex-direction:row;
+  flex-wrap:nowrap !important;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+}
+.menu-category-form-actions>button:not(.category-cancel-button){
+  flex:0 0 68px;
+  width:68px;
+  min-width:68px;
+  max-width:68px;
+  height:38px;
+  padding:0 6px;
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  font-size:12px;
+}
+.menu-category-form-actions>.category-cancel-button{
+  flex:0 0 auto;
+  min-width:44px;
+  height:38px;
+  padding:0 8px;
+}
+.menu-category-manage-list{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:wrap !important;
+  align-items:center;
+  justify-content:flex-start;
+  gap:7px;
+  width:100%;
+}
+.menu-category-manage-list>.menu-category-chip{
+  display:inline-flex !important;
+  flex:0 0 auto !important;
+  width:max-content !important;
+  min-width:0 !important;
+  max-width:100%;
+  min-height:32px;
+  height:auto;
+  padding:7px 12px;
+  margin:0;
+  white-space:nowrap;
+  line-height:1.2;
+  box-sizing:border-box;
+}
+@media(max-width:640px){
+  .menu-category-form{
+    grid-template-columns:minmax(0,1fr) auto !important;
+    gap:6px;
+  }
+  .menu-category-form-actions{gap:4px}
+  .menu-category-form-actions>button:not(.category-cancel-button){
+    flex-basis:60px;
+    width:60px;
+    min-width:60px;
+    max-width:60px;
+    height:36px;
+    padding:0 4px;
+    font-size:11px;
+  }
+  .menu-category-form-actions>.category-cancel-button{
+    height:36px;
+    padding:0 6px;
+  }
+  .menu-category-manage-list{gap:6px}
+  .menu-category-manage-list>.menu-category-chip{padding:7px 10px}
+}
