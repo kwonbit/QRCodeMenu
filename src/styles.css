@@ -385,3 +385,56 @@
     grid-template-columns:minmax(0,1fr) !important;
   }
 }
+
+
+/* Phone order checkout and staff order details */
+.phone-order-form{
+  display:grid;
+  gap:12px;
+  margin:16px 0 10px;
+  padding:15px;
+  border:1px solid #e2e8de;
+  border-radius:12px;
+  background:#f8faf6;
+}
+.phone-order-form label{
+  display:grid;
+  gap:7px;
+  color:#596457;
+  font-size:12px;
+  font-weight:600;
+}
+.phone-order-form label span{color:#929b90;font-weight:400}
+.phone-order-form input,
+.phone-order-form textarea{
+  width:100%;
+  min-width:0;
+  padding:11px 12px;
+  border:1px solid #dfe5da;
+  border-radius:8px;
+  background:#fff;
+  color:#20251f;
+  font:inherit;
+  font-size:12px;
+  resize:vertical;
+}
+.phone-order-form .order-button{margin-top:2px}
+.phone-order-details{
+  display:grid;
+  gap:5px;
+  margin:12px 0;
+  padding:11px 12px;
+  border-radius:9px;
+  background:#f5f8f2;
+}
+.phone-order-details p{
+  margin:0;
+  color:#667164;
+  font-size:11px;
+  line-height:1.6;
+  overflow-wrap:anywhere;
+}
+.phone-order-details b{color:#344436}
+@media(max-width:520px){
+  .phone-order-form{padding:12px}
+}
