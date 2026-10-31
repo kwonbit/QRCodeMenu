@@ -214,8 +214,8 @@ export default function App() {
     setOptionMenuItem(item)
     setSelectedMenuOptions([])
   }
-  function changeQuantity(id, amount) {
-    setCart(current => current.map(item => item.id === id ? { ...item, quantity: item.quantity + amount } : item).filter(item => item.quantity > 0))
+  function changeQuantity(cartKey, amount) {
+    setCart(current => current.map(item => item.cartKey === cartKey ? { ...item, quantity: item.quantity + amount } : item).filter(item => item.quantity > 0))
   }
   async function cancelCustomerOrder(order) {
     if (!tableToken || order.status !== 'pending' || cancellingCustomerOrder) return
@@ -479,11 +479,11 @@ export default function App() {
           <section className="menu-section">
             <div className="section-heading"><div><p className="eyebrow">OUR MENU</p><h2>오늘의 메뉴</h2></div><span className="menu-count">{filtered.length} ITEMS</span></div>
             <div className="categories">{categories.map(item => <button key={item} className={category === item ? 'selected' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
-            <div className="menu-grid">{filtered.map(item => <article className="menu-card" key={item.id}><div className="food-art">{item.image_url ? <img src={item.image_url} alt={item.name} /> : item.emoji}<span>{item.category}</span></div><div className="food-info"><h3>{item.name}</h3><p>{item.desc}</p><div className="food-bottom"><b>{money(item.unitPrice)}</b><button aria-label={item.name + ' 담기'} onClick={() => openMenuOptions(item)}>+</button></div></div></article>)}</div>
+            <div className="menu-grid">{filtered.map(item => <article className="menu-card" key={item.id}><div className="food-art">{item.image_url ? <img src={item.image_url} alt={item.name} /> : item.emoji}<span>{item.category}</span></div><div className="food-info"><h3>{item.name}</h3><p>{item.desc}</p><div className="food-bottom"><b>{money(item.price)}</b><button aria-label={item.name + ' 담기'} onClick={() => openMenuOptions(item)}>+</button></div></div></article>)}</div>
           </section>
           <aside className="cart-card">
             <div className="cart-title"><div><p className="eyebrow">YOUR ORDER</p><h2>테이블 {String(tableNumber ?? 1).padStart(2, '0')} 주문 내역</h2></div><span>{cart.reduce((s, i) => s + i.quantity, 0)}개</span></div>
-            {cart.length ? <div className="cart-items">{cart.map(item => <div className="cart-row" key={item.cartKey}><div><b>{item.name}</b>{item.options?.length > 0 && <small>{item.options.map(option => option.name).join(', ')}</small>}<small>{money(item.unitPrice)}</small></div><div className="quantity"><button onClick={() => changeQuantity(item.id, -1)}>−</button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.id, 1)}>+</button></div></div>)}</div> : <div className="empty-cart"><span>🛍️</span><b>아직 담긴 메뉴가 없어요.</b><small>마음에 드는 메뉴를 선택해 주세요.</small></div>}
+            {cart.length ? <div className="cart-items">{cart.map(item => <div className="cart-row" key={item.cartKey}><div><b>{item.name}</b>{item.options?.length > 0 && <small>{item.options.map(option => option.name).join(', ')}</small>}<small>{money(item.unitPrice)}</small></div><div className="quantity"><button onClick={() => changeQuantity(item.cartKey, -1)}>−</button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.cartKey, 1)}>+</button></div></div>)}</div> : <div className="empty-cart"><span>🛍️</span><b>아직 담긴 메뉴가 없어요.</b><small>마음에 드는 메뉴를 선택해 주세요.</small></div>}
             <div className="cart-total"><span>총 주문 금액</span><b>{money(total)}</b></div>
             <button type="button" className="order-button" disabled={!cart.length || orderSubmitting} onClick={submitOrder}>{orderSubmitting ? '주문 접수 중...' : '주문하기'} <span>→</span></button>
             <p className="payment-note">결제는 매장 카운터에서 진행됩니다.</p>
