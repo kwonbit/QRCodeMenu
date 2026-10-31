@@ -14,6 +14,7 @@ export default function App() {
   const params = new URLSearchParams(window.location.search)
   const tableToken = params.get('table_token')
   const [tableNumber, setTableNumber] = useState(null)
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem('qrcodemenu-theme') === 'dark' ? 'dark' : 'light' } catch { return 'light' } })
   const [customerOrderIds, setCustomerOrderIds] = useState(() => {
     if (!tableToken) return []
     try { return JSON.parse(localStorage.getItem('qrcodemenu-orders-' + tableToken) || '[]') } catch { return [] }
@@ -589,10 +590,14 @@ export default function App() {
 
   const customerBlocked = tableToken && (tableLoading || tableError || tableNumber == null)
 
-  return <div className="app-shell">
+  useEffect(() => {
+    try { localStorage.setItem('qrcodemenu-theme', theme) } catch {}
+  }, [theme])
+
+  return <div className={'app-shell ' + (theme === 'dark' ? 'theme-dark' : 'theme-light')}>
     <header className="topbar">
       <a className="brand" href="/"><span className="brand-mark">Q</span><span>TABLE<span className="brand-light"> ORDER</span></span></a>
-      {(tab === 'menu' || tab === 'customer-orders') && !customerBlocked && <div className="table-chip">TABLE <b>{tableToken ? String(tableNumber).padStart(2, '0') : '전화주문'}</b></div>}
+      <div className="topbar-actions">{(tab === 'menu' || tab === 'customer-orders') && !customerBlocked && <div className="table-chip">TABLE <b>{tableToken ? String(tableNumber).padStart(2, '0') : '전화주문'}</b></div>}<div className="theme-switch" role="group" aria-label="화면 테마 선택"><button type="button" className={theme === 'light' ? 'active' : ''} aria-pressed={theme === 'light'} onClick={() => setTheme('light')}><span aria-hidden="true">☀</span> 밝은 화면</button><button type="button" className={theme === 'dark' ? 'active' : ''} aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}><span aria-hidden="true">☾</span> 어두운 화면</button></div></div>
     </header>
     <main>
       {(tab === 'menu' || tab === 'customer-orders') ? customerBlocked ? <section className="table-error"><p className="eyebrow">TABLE ORDER</p><h2>{tableLoading ? '테이블 정보를 확인하고 있습니다...' : '테이블 QR 코드를 확인해 주세요.'}</h2><p>{tableError}</p></section> : <>
