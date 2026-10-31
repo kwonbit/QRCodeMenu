@@ -48,6 +48,8 @@ export default function App() {
   const [phoneOrderOpen, setPhoneOrderOpen] = useState(false)
   const [customerPhone, setCustomerPhone] = useState(getSavedPhone)
   const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [locatingAddress, setLocatingAddress] = useState(false)
+  const [locationError, setLocationError] = useState('')
   const [requestNote, setRequestNote] = useState('')
   const [orderSubmitting, setOrderSubmitting] = useState(false)
   const [cancellingCustomerOrder, setCancellingCustomerOrder] = useState('')
@@ -293,6 +295,56 @@ export default function App() {
     } finally {
       setCancellingCustomerOrder('')
     }
+  }
+
+  async function findCurrentAddress() {
+    if (locatingAddress) return
+    if (!navigator.geolocation) {
+      setLocationError('이 브라우저에서는 위치정보를 사용할 수 없습니다.')
+      return
+    }
+    if (!window.isSecureContext) {
+      setLocationError('현재 위치 기능은 HTTPS 연결에서만 사용할 수 있습니다.')
+      return
+    }
+    setLocatingAddress(true)
+    setLocationError('')
+    setNotice('현재 위치를 확인하고 있습니다...')
+    navigator.geolocation.getCurrentPosition(async position => {
+      try {
+        const params = new URLSearchParams({
+          format: 'jsonv2',
+          lat: String(position.coords.latitude),
+          lon: String(position.coords.longitude),
+          zoom: '18',
+          addressdetails: '1',
+          'accept-language': 'ko',
+        })
+        const response = await fetch('https://nominatim.openstreetmap.org/reverse?' + params.toString(), {
+          headers: { Accept: 'application/json' },
+        })
+        if (!response.ok) throw new Error('주소 검색 서비스에 연결하지 못했습니다.')
+        const result = await response.json()
+        if (!result?.display_name) throw new Error('현재 위치의 주소를 찾지 못했습니다. 주소를 직접 입력해 주세요.')
+        setDeliveryAddress(result.display_name)
+        setLocationError('')
+        setNotice('현재 위치의 주소를 입력했습니다. 상세 주소가 맞는지 확인해 주세요.')
+      } catch (error) {
+        setLocationError(error?.message || '주소를 찾지 못했습니다. 주소를 직접 입력해 주세요.')
+        setNotice('')
+      } finally {
+        setLocatingAddress(false)
+      }
+    }, error => {
+      const message = error.code === 1
+        ? '위치정보 권한을 허용해 주세요. 브라우저 사이트 설정에서 위치 권한을 변경할 수 있습니다.'
+        : error.code === 2
+          ? '현재 위치를 확인할 수 없습니다. GPS 또는 위치 서비스를 켜고 다시 시도해 주세요.'
+          : '위치 확인 시간이 초과되었습니다. 다시 시도해 주세요.'
+      setLocationError(message)
+      setNotice('')
+      setLocatingAddress(false)
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
   }
 
   async function submitOrder() {
@@ -629,7 +681,7 @@ export default function App() {
             <div className="cart-title"><div><p className="eyebrow">YOUR ORDER</p><h2>{tableToken ? '테이블 ' + String(tableNumber).padStart(2, '0') : '전화주문'} 내역</h2></div><span>{cart.reduce((s, i) => s + i.quantity, 0)}개</span></div>
             {cart.length ? <div className="cart-items">{cart.map(item => <div className="cart-row" key={item.cartKey}><div><b>{item.name}</b>{item.options?.length > 0 && <small>{item.options.map(option => option.name).join(', ')}</small>}<small>{money(item.unitPrice)}</small></div><div className="quantity"><button onClick={() => changeQuantity(item.cartKey, -1)}>−</button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.cartKey, 1)}>+</button></div></div>)}</div> : <div className="empty-cart"><span>🛍️</span><b>아직 담긴 메뉴가 없어요.</b><small>마음에 드는 메뉴를 선택해 주세요.</small></div>}
             <div className="cart-total"><span>총 주문 금액</span><b>{money(total)}</b></div>
-            {!tableToken && phoneOrderOpen && <div className="phone-order-form"><label>전화번호<input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="예: 010-1234-5678" autoComplete="tel" required /></label><label>배달주소<textarea value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="도로명 주소와 상세 주소를 입력해 주세요." rows={2} required /></label><label>요청사항 <span>(선택)</span><textarea value={requestNote} onChange={e => setRequestNote(e.target.value)} placeholder="예: 문 앞에 놓아주세요. 덜 맵게 해주세요." rows={2} maxLength={500} /></label><button type="button" className="order-button" disabled={!customerPhone.trim() || !deliveryAddress.trim() || orderSubmitting} onClick={submitOrder}>{orderSubmitting ? '주문 접수 중...' : '전화주문 접수하기'} <span>→</span></button></div>}
+            {!tableToken && phoneOrderOpen && <div className="phone-order-form"><label>전화번호<input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="예: 010-1234-5678" autoComplete="tel" required /></label><label className="delivery-address-field">배달주소<div className="delivery-address-input"><textarea value={deliveryAddress} onChange={e => { setDeliveryAddress(e.target.value); setLocationError('') }} placeholder="도로명 주소와 상세 주소를 입력해 주세요." rows={2} required /><button type="button" className="find-location-button" onClick={findCurrentAddress} disabled={locatingAddress || orderSubmitting}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg><span>{locatingAddress ? '찾는 중' : '현재 위치'}</span></button></div>{locationError && <small className="location-error">{locationError}</small>}</label><label>요청사항 <span>(선택)</span><textarea value={requestNote} onChange={e => setRequestNote(e.target.value)} placeholder="예: 문 앞에 놓아주세요. 덜 맵게 해주세요." rows={2} maxLength={500} /></label><button type="button" className="order-button" disabled={!customerPhone.trim() || !deliveryAddress.trim() || orderSubmitting} onClick={submitOrder}>{orderSubmitting ? '주문 접수 중...' : '전화주문 접수하기'} <span>→</span></button></div>}
             <button type="button" className="order-button" disabled={!cart.length || orderSubmitting} onClick={() => tableToken ? submitOrder() : setPhoneOrderOpen(value => !value)}>{orderSubmitting ? '주문 접수 중...' : tableToken ? '주문하기' : phoneOrderOpen ? '입력 닫기' : '주문하기'} <span>→</span></button>
             <p className="payment-note">{tableToken ? '결제는 매장 카운터에서 진행됩니다.' : '전화주문 접수 후 매장에서 연락드려 주문을 확인합니다.'}</p>
           </aside>
