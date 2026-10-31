@@ -364,3 +364,24 @@
   .menu-option-group .menu-option-draft{grid-template-columns:minmax(0,1fr) 88px auto;gap:5px}
   .menu-image-control{grid-template-columns:minmax(0,1fr) 96px}
 }
+
+
+/* Fix: keep option 1 and option 2 in two columns on desktop */
+.menu-options-editor .menu-option-groups{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  align-items:start;
+  width:100%;
+  min-width:0;
+}
+.menu-options-editor .menu-option-groups > .menu-option-group{
+  display:block;
+  width:100%;
+  min-width:0;
+  margin:0;
+}
+@media(max-width:520px){
+  .menu-options-editor .menu-option-groups{
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+}
