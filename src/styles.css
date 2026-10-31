@@ -258,3 +258,109 @@
   .menu-option-group .menu-option-draft{grid-template-columns:minmax(0,1fr) 95px auto}
   .menu-option-group .menu-option-draft button{grid-column:auto}
 }
+
+
+/* Menu image picker and preview share one horizontal field */
+.menu-image-field{
+  grid-column:1/-1;
+  display:block;
+  min-width:0;
+}
+.menu-image-field .menu-field-label{
+  display:block;
+  margin-bottom:7px;
+  color:#52604f;
+  font-size:12px;
+  font-weight:600;
+}
+.menu-image-control{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 150px;
+  gap:12px;
+  align-items:stretch;
+  padding:10px;
+  border:1px solid #e5e9e1;
+  border-radius:10px;
+  background:#f8faf6;
+}
+.menu-image-actions{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:8px;
+  min-width:0;
+}
+.menu-image-actions input{
+  width:100%;
+  min-width:0;
+  padding:9px;
+  border:1px dashed #cbd5c7;
+  border-radius:8px;
+  background:#fff;
+  font-size:11px;
+  box-sizing:border-box;
+}
+.menu-image-actions small{color:#929b90;font-size:10px}
+.menu-image-actions button{
+  padding:7px 11px;
+  border:1px solid #e0e5dc;
+  border-radius:8px;
+  background:#fff;
+  color:#697468;
+  font:inherit;
+  font-size:11px;
+  cursor:pointer;
+}
+.menu-image-preview{
+  grid-column:auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:104px;
+  padding:5px;
+  border:1px dashed #d7dfd2;
+  border-radius:8px;
+  background:#fff;
+  color:#a0a99b;
+  font-size:10px;
+}
+.menu-image-preview img{
+  display:block;
+  width:100%;
+  height:104px;
+  object-fit:cover;
+  border-radius:5px;
+}
+
+/* Option 1 and option 2 sit side-by-side on desktop */
+.menu-option-groups{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:12px;
+}
+.menu-option-group{
+  min-width:0;
+  margin:0;
+  padding:12px;
+  border:1px solid #e4e9e0;
+  border-radius:9px;
+  background:#fff;
+}
+.menu-option-group-heading{margin-bottom:8px}
+.menu-option-group .menu-option-draft{
+  grid-template-columns:minmax(0,1fr) 105px auto;
+  gap:6px;
+}
+.menu-option-group .menu-option-draft input{width:100%;padding:9px 8px;font-size:11px}
+.menu-option-group .menu-option-draft button{padding:7px 9px;font-size:10px}
+@media(max-width:600px){
+  .menu-option-groups{grid-template-columns:minmax(0,1fr);gap:9px}
+  .menu-image-control{grid-template-columns:minmax(0,1fr) 112px;gap:8px}
+  .menu-image-preview,.menu-image-preview img{min-height:90px;height:90px}
+}
+@media(max-width:380px){
+  .menu-option-group .menu-option-draft{grid-template-columns:minmax(0,1fr) 88px auto;gap:5px}
+  .menu-image-control{grid-template-columns:minmax(0,1fr) 96px}
+}
