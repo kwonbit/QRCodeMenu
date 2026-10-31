@@ -242,3 +242,19 @@
   .menu-category-manage-list{gap:6px}
   .menu-category-manage-list>.menu-category-chip{padding:7px 10px}
 }
+
+
+/* Two independent option groups in menu editor and customer selector */
+.menu-option-group{margin-top:14px;padding-top:12px;border-top:1px solid #e4e9e0}
+.menu-option-group-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.menu-option-group-heading>b,.customer-option-group h3{margin:0;color:#344436;font-size:13px}
+.menu-option-group-heading button{padding:7px 11px;font-size:11px}
+.customer-option-group{margin-top:16px}
+.customer-option-group h3{margin:0 0 9px}
+.customer-option-list input[type="radio"]{flex:0 0 auto;accent-color:#315e43}
+.menu-options-heading>span{color:#899287;font-size:10px}
+@media(max-width:520px){
+  .menu-option-group-heading{align-items:center}
+  .menu-option-group .menu-option-draft{grid-template-columns:minmax(0,1fr) 95px auto}
+  .menu-option-group .menu-option-draft button{grid-column:auto}
+}
