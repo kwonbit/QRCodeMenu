@@ -545,3 +545,15 @@
 
 .staff-order-summary .customer-status-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:640px){.staff-order-summary .customer-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Distinct status colors in the staff order filters, matching order action states. */
+.order-filter-options button.status-filter-button{padding:8px 12px;border:1px solid #dfe5da;border-radius:9px;background:#f8f9f6;color:#657061;font:600 11px inherit;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.order-filter-options button.status-filter-button.selected.status-pending{border-color:#9b7b35;background:#fff3d7;color:#805d13}
+.order-filter-options button.status-filter-button.selected.status-accepted{border-color:#4564a0;background:#e9f0ff;color:#34558f}
+.order-filter-options button.status-filter-button.selected.status-preparing{border-color:#96641c;background:#fff3df;color:#875813}
+.order-filter-options button.status-filter-button.selected.status-served{border-color:#39764b;background:#e6f4e9;color:#316a43}
+.order-filter-options button.status-filter-button.selected.status-paid{border-color:#20834a;background:#dff6e7;color:#176b3a}
+.order-filter-options button.status-filter-button.selected.status-cancelled{border-color:#9b4b40;background:#f4e9e7;color:#914237}
+.order-filter-options button.status-filter-button:focus-visible{outline:2px solid #315e43;outline-offset:2px}
+.staff-order-summary .customer-summary-amount b{color:#087f3c;font-size:25px;text-shadow:0 1px 0 #087f3c20}
+.theme-dark .staff-order-summary .customer-summary-amount b{color:#76e6a0;text-shadow:none}
