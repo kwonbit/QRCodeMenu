@@ -557,3 +557,45 @@
 .order-filter-options button.status-filter-button:focus-visible{outline:2px solid #315e43;outline-offset:2px}
 .staff-order-summary .customer-summary-amount b{color:#00a83b;font-size:27px;font-weight:900;text-shadow:0 0 10px #00c85355}
 .theme-dark .staff-order-summary .customer-summary-amount b{color:#a6ff65;font-size:27px;font-weight:900;text-shadow:0 0 12px #a6ff6570}
+
+
+/* Phone-order current location address lookup */
+.delivery-address-input{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 92px;
+  align-items:stretch;
+  gap:8px;
+}
+.delivery-address-input textarea{min-width:0;min-height:58px}
+.find-location-button{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  min-width:0;
+  padding:8px 5px;
+  border:1px solid #cbd9c9;
+  border-radius:9px;
+  background:#edf4eb;
+  color:#315e43;
+  font:600 11px inherit;
+  cursor:pointer;
+}
+.find-location-button svg{
+  width:21px;
+  height:21px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.find-location-button:disabled{opacity:.6;cursor:wait}
+.location-error{color:#b42318;font-size:11px;line-height:1.5;font-weight:500}
+.theme-dark .find-location-button{border-color:#58705a;background:#344638;color:#d1efd0}
+.theme-dark .location-error{color:#ffaaa0}
+@media(max-width:380px){
+  .delivery-address-input{grid-template-columns:minmax(0,1fr) 78px;gap:6px}
+  .find-location-button{font-size:10px}
+}
