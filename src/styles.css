@@ -422,17 +422,22 @@
 .phone-order-form .order-button{margin-top:2px}
 .phone-order-details{
   display:grid;
-  gap:2px;
+  gap:5px;
+  height:auto;
+  min-height:0;
+  align-content:start;
   margin:12px 0;
   padding:11px 12px;
   border-radius:9px;
   background:#f5f8f2;
 }
 .phone-order-details p{
+  min-height:0;
+  height:auto;
   margin:0;
   color:#667164;
   font-size:11px;
-  line-height:1.1;
+  line-height:0.5;
   overflow-wrap:anywhere;
 }
 .phone-order-details b{color:#344436}
