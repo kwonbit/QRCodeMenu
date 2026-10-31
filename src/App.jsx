@@ -37,6 +37,10 @@ export default function App() {
   const [optionMenuItem, setOptionMenuItem] = useState(null)
   const [selectedMenuOptions, setSelectedMenuOptions] = useState({ option1: '', option2: '' })
   const [cart, setCart] = useState([])
+  const [phoneOrderOpen, setPhoneOrderOpen] = useState(false)
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [requestNote, setRequestNote] = useState('')
   const [orderSubmitting, setOrderSubmitting] = useState(false)
   const [cancellingCustomerOrder, setCancellingCustomerOrder] = useState('')
   const [orders, setOrders] = useState([])
@@ -58,14 +62,14 @@ export default function App() {
   const filtered = category === '전체' ? menu : menu.filter(item => item.category === category)
   const visibleCustomerOrders = customerOrders.filter(order => order.payment_status !== 'paid' && order.status !== 'cancelled')
   const orderTableOptions = [...new Set(tables.map(table => String(table.table_number)))].sort((a, b) => Number(a) - Number(b))
-  const filteredOrders = orders.filter(order => selectedOrderStatuses.includes(order.payment_status === 'paid' ? 'paid' : order.status) && (selectedOrderTable === 'all' || String(order.table_number) === selectedOrderTable))
+  const filteredOrders = orders.filter(order => selectedOrderStatuses.includes(order.payment_status === 'paid' ? 'paid' : order.status) && (selectedOrderTable === 'all' || (selectedOrderTable === 'phone' ? order.order_type === 'phone' : String(order.table_number) === selectedOrderTable)))
   const visibleCustomerOrderTotal = visibleCustomerOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
   const customerOrderStatusCounts = Object.entries(statusLabels).filter(([status]) => status !== 'cancelled').map(([status, label]) => ({ status, label, count: visibleCustomerOrders.filter(order => order.status === status).length }))
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0), [cart])
 
   useEffect(() => {
     if (!tableToken) {
-      setTableNumber(Number(params.get('table') || 1))
+      setTableNumber(null)
       setTableLoading(false)
       return
     }
@@ -149,7 +153,7 @@ export default function App() {
       setOrdersLoading(true)
       setOrderError('')
       const { data, error } = await supabase.from('orders')
-        .select('id, table_number, status, payment_status, total_amount, created_at, order_items(id, item_name, unit_price, quantity, line_total, selected_options)')
+        .select('id, table_number, order_type, customer_phone, delivery_address, request_note, status, payment_status, total_amount, created_at, order_items(id, item_name, unit_price, quantity, line_total, selected_options)')
         .order('created_at', { ascending: false }).limit(100)
       if (!active) return
       if (error) setOrderError('주문 조회 실패: ' + error.message)
@@ -244,26 +248,41 @@ export default function App() {
   async function submitOrder() {
     if (orderSubmitting) return
     if (!cart.length) { setNotice('주문할 메뉴를 먼저 담아 주세요.'); return }
-    if (tableNumber == null) { setNotice('테이블 정보를 확인하지 못했습니다. QR 코드를 다시 스캔해 주세요.'); return }
     if (!isSupabaseConfigured || !supabase) { setNotice('주문 서버 연결 설정이 없습니다. 매장 관리자에게 문의해 주세요.'); return }
-    if (!tableToken) { setNotice('테이블별 QR 코드를 스캔한 화면에서 주문해 주세요.'); return }
+    if (tableToken && tableNumber == null) { setNotice('테이블 정보를 확인하지 못했습니다. QR 코드를 다시 스캔해 주세요.'); return }
+    if (!tableToken && (!customerPhone.trim() || !deliveryAddress.trim())) {
+      setNotice('전화번호와 배달주소를 입력해 주세요.')
+      setPhoneOrderOpen(true)
+      return
+    }
 
     setOrderSubmitting(true)
-    setNotice('주문을 접수하고 있습니다...')
+    setNotice(tableToken ? '주문을 접수하고 있습니다...' : '전화주문을 접수하고 있습니다...')
     try {
-      const { data: orderId, error } = await supabase.rpc('create_customer_order_by_token', {
-        p_table_token: tableToken,
-        p_items: cart.map(item => ({ menu_item_id: item.id, quantity: item.quantity, option_ids: item.options.map(option => option.id) })),
-      })
+      const items = cart.map(item => ({ menu_item_id: item.id, quantity: item.quantity, option_ids: item.options.map(option => option.id) }))
+      const { data: orderId, error } = tableToken
+        ? await supabase.rpc('create_customer_order_by_token', { p_table_token: tableToken, p_items: items })
+        : await supabase.rpc('create_phone_order', {
+            p_customer_phone: customerPhone.trim(),
+            p_delivery_address: deliveryAddress.trim(),
+            p_request_note: requestNote.trim(),
+            p_items: items,
+          })
       if (error) throw error
       if (!orderId) throw new Error('서버에서 주문 번호를 받지 못했습니다.')
-      setCustomerOrderIds(current => {
-        const next = [...new Set([...current, orderId])].slice(-30)
-        localStorage.setItem('qrcodemenu-orders-' + tableToken, JSON.stringify(next))
-        return next
-      })
+      if (tableToken) {
+        setCustomerOrderIds(current => {
+          const next = [...new Set([...current, orderId])].slice(-30)
+          localStorage.setItem('qrcodemenu-orders-' + tableToken, JSON.stringify(next))
+          return next
+        })
+      }
       setCart([])
-      setNotice('주문이 접수되었습니다. 카운터에서 결제해 주세요.')
+      setPhoneOrderOpen(false)
+      setCustomerPhone('')
+      setDeliveryAddress('')
+      setRequestNote('')
+      setNotice(tableToken ? '주문이 접수되었습니다. 카운터에서 결제해 주세요.' : '전화주문이 접수되었습니다. 입력하신 연락처로 확인 후 안내드리겠습니다.')
     } catch (error) {
       console.error('주문 접수 오류:', error)
       setNotice('주문 접수에 실패했습니다: ' + (error?.message || '알 수 없는 오류'))
@@ -530,12 +549,12 @@ export default function App() {
   return <div className="app-shell">
     <header className="topbar">
       <a className="brand" href="/"><span className="brand-mark">Q</span><span>TABLE<span className="brand-light"> ORDER</span></span></a>
-      {(tab === 'menu' || tab === 'customer-orders') && !customerBlocked && <div className="table-chip">TABLE <b>{String(tableNumber ?? 1).padStart(2, '0')}</b></div>}
+      {(tab === 'menu' || tab === 'customer-orders') && !customerBlocked && <div className="table-chip">TABLE <b>{tableToken ? String(tableNumber).padStart(2, '0') : '전화주문'}</b></div>}
     </header>
     <main>
       {(tab === 'menu' || tab === 'customer-orders') ? customerBlocked ? <section className="table-error"><p className="eyebrow">TABLE ORDER</p><h2>{tableLoading ? '테이블 정보를 확인하고 있습니다...' : '테이블 QR 코드를 확인해 주세요.'}</h2><p>{tableError}</p></section> : <>
         <section className="hero">
-          <p className="eyebrow">WELCOME TO OUR TABLE · TABLE {String(tableNumber ?? 1).padStart(2, '0')}</p>
+          <p className="eyebrow">{tableToken ? 'WELCOME TO OUR TABLE · TABLE ' + String(tableNumber).padStart(2, '0') : 'WELCOME · PHONE ORDER'}</p>
           <h1>맛있는 시간을<br /><em>주문해 보세요.</em></h1>
           <p className="hero-copy">메뉴를 천천히 살펴보고 편하게 주문해 주세요.</p>
           <div className="hero-stamp">FRESH<br />& TASTY</div>
@@ -549,11 +568,12 @@ export default function App() {
             <div className="menu-grid">{filtered.map(item => <article className="menu-card" key={item.id}><div className="food-art">{item.image_url ? <img src={item.image_url} alt={item.name} /> : item.emoji}<span>{item.category}</span></div><div className="food-info"><h3>{item.name}</h3><p>{item.desc}</p><div className="food-bottom"><b>{money(item.price)}</b><button aria-label={item.name + ' 담기'} onClick={() => openMenuOptions(item)}>+</button></div></div></article>)}</div>
           </section>
           <aside className="cart-card">
-            <div className="cart-title"><div><p className="eyebrow">YOUR ORDER</p><h2>테이블 {String(tableNumber ?? 1).padStart(2, '0')} 주문 내역</h2></div><span>{cart.reduce((s, i) => s + i.quantity, 0)}개</span></div>
+            <div className="cart-title"><div><p className="eyebrow">YOUR ORDER</p><h2>{tableToken ? '테이블 ' + String(tableNumber).padStart(2, '0') : '전화주문'} 내역</h2></div><span>{cart.reduce((s, i) => s + i.quantity, 0)}개</span></div>
             {cart.length ? <div className="cart-items">{cart.map(item => <div className="cart-row" key={item.cartKey}><div><b>{item.name}</b>{item.options?.length > 0 && <small>{item.options.map(option => option.name).join(', ')}</small>}<small>{money(item.unitPrice)}</small></div><div className="quantity"><button onClick={() => changeQuantity(item.cartKey, -1)}>−</button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.cartKey, 1)}>+</button></div></div>)}</div> : <div className="empty-cart"><span>🛍️</span><b>아직 담긴 메뉴가 없어요.</b><small>마음에 드는 메뉴를 선택해 주세요.</small></div>}
             <div className="cart-total"><span>총 주문 금액</span><b>{money(total)}</b></div>
-            <button type="button" className="order-button" disabled={!cart.length || orderSubmitting} onClick={submitOrder}>{orderSubmitting ? '주문 접수 중...' : '주문하기'} <span>→</span></button>
-            <p className="payment-note">결제는 매장 카운터에서 진행됩니다.</p>
+            {!tableToken && phoneOrderOpen && <div className="phone-order-form"><label>전화번호<input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="예: 010-1234-5678" autoComplete="tel" required /></label><label>배달주소<textarea value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="도로명 주소와 상세 주소를 입력해 주세요." rows={2} required /></label><label>요청사항 <span>(선택)</span><textarea value={requestNote} onChange={e => setRequestNote(e.target.value)} placeholder="예: 문 앞에 놓아주세요. 덜 맵게 해주세요." rows={2} maxLength={500} /></label><button type="button" className="order-button" disabled={!customerPhone.trim() || !deliveryAddress.trim() || orderSubmitting} onClick={submitOrder}>{orderSubmitting ? '주문 접수 중...' : '전화주문 접수하기'} <span>→</span></button></div>}
+            <button type="button" className="order-button" disabled={!cart.length || orderSubmitting} onClick={() => tableToken ? submitOrder() : setPhoneOrderOpen(value => !value)}>{orderSubmitting ? '주문 접수 중...' : tableToken ? '주문하기' : phoneOrderOpen ? '입력 닫기' : '주문하기'} <span>→</span></button>
+            <p className="payment-note">{tableToken ? '결제는 매장 카운터에서 진행됩니다.' : '전화주문 접수 후 매장에서 연락드려 주문을 확인합니다.'}</p>
           </aside>
         </div>}
       </> : <section className="counter-section">
@@ -565,8 +585,8 @@ export default function App() {
           {orderError && <p className="form-error">{orderError}</p>}
           {tab === 'counter' ? <>
             <div className="section-heading counter-heading"><span className="live-label">● 주문 {filteredOrders.length}건 표시 / 전체 {orders.length}건</span><span className="refresh-label">{ordersLoading ? '불러오는 중...' : '최근 주문 100건'}</span></div>
-            <section className="order-filter-panel"><div className="table-filter-row"><label htmlFor="order-table-filter">테이블 선택</label><select id="order-table-filter" value={selectedOrderTable} onChange={e => setSelectedOrderTable(e.target.value)}><option value="all">전체 테이블</option>{orderTableOptions.map(number => <option key={number} value={number}>테이블 {number}</option>)}</select></div><div className="order-status-filter"><div className="order-filter-heading"><b>주문 상태 필터</b><span>여러 상태를 선택할 수 있습니다.</span></div><div className="order-filter-options">{orderStatusOptions.map(option => <button type="button" key={option.value} className={selectedOrderStatuses.includes(option.value) ? 'selected' : ''} aria-pressed={selectedOrderStatuses.includes(option.value)} onClick={() => setSelectedOrderStatuses(current => current.includes(option.value) ? current.filter(value => value !== option.value) : [...current, option.value])}>{option.label}</button>)}</div></div></section>
-            {!filteredOrders.length ? <div className="empty-orders">{orders.length ? '선택한 주문 상태에 해당하는 주문이 없습니다.' : '저장된 주문이 없습니다.'}</div> : <div className="order-list">{filteredOrders.map(order => <article className="order-card" key={order.id}><div className="order-card-head"><b>테이블 {order.table_number}</b><span>{new Date(order.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div><div className="order-detail-items">{(order.order_items || []).map(item => <div key={item.id}><span>{item.item_name} × {item.quantity}{item.selected_options?.length > 0 && <small className="order-option-note">{item.selected_options.map(option => option.name + ' (+' + money(option.additional_price) + ')').join(', ')}</small>}</span><b>{money(item.line_total)}</b></div>)}</div><div className="order-card-bottom"><strong>{money(order.total_amount)}</strong><span className={'status status-' + (order.payment_status === 'paid' ? 'paid' : order.status)}>{statusLabels[order.payment_status === 'paid' ? 'paid' : order.status] || order.status}</span></div>
+            <section className="order-filter-panel"><div className="table-filter-row"><label htmlFor="order-table-filter">테이블 선택</label><select id="order-table-filter" value={selectedOrderTable} onChange={e => setSelectedOrderTable(e.target.value)}><option value="all">전체 주문</option><option value="phone">전화주문</option>{orderTableOptions.map(number => <option key={number} value={number}>테이블 {number}</option>)}</select></div><div className="order-status-filter"><div className="order-filter-heading"><b>주문 상태 필터</b><span>여러 상태를 선택할 수 있습니다.</span></div><div className="order-filter-options">{orderStatusOptions.map(option => <button type="button" key={option.value} className={selectedOrderStatuses.includes(option.value) ? 'selected' : ''} aria-pressed={selectedOrderStatuses.includes(option.value)} onClick={() => setSelectedOrderStatuses(current => current.includes(option.value) ? current.filter(value => value !== option.value) : [...current, option.value])}>{option.label}</button>)}</div></div></section>
+            {!filteredOrders.length ? <div className="empty-orders">{orders.length ? '선택한 주문 상태에 해당하는 주문이 없습니다.' : '저장된 주문이 없습니다.'}</div> : <div className="order-list">{filteredOrders.map(order => <article className="order-card" key={order.id}><div className="order-card-head"><b>{order.order_type === 'phone' ? '전화주문' : '테이블 ' + order.table_number}</b><span>{new Date(order.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>{order.order_type === 'phone' && <div className="phone-order-details"><p><b>전화번호</b> {order.customer_phone}</p><p><b>배달주소</b> {order.delivery_address}</p>{order.request_note && <p><b>요청사항</b> {order.request_note}</p>}</div>}<div className="order-detail-items">{(order.order_items || []).map(item => <div key={item.id}><span>{item.item_name} × {item.quantity}{item.selected_options?.length > 0 && <small className="order-option-note">{item.selected_options.map(option => option.name + ' (+' + money(option.additional_price) + ')').join(', ')}</small>}</span><b>{money(item.line_total)}</b></div>)}</div><div className="order-card-bottom"><strong>{money(order.total_amount)}</strong><span className={'status status-' + (order.payment_status === 'paid' ? 'paid' : order.status)}>{statusLabels[order.payment_status === 'paid' ? 'paid' : order.status] || order.status}</span></div>
               <div className="order-actions"><span className="order-actions-title">주문 상태 변경</span><div className="order-status-actions">{orderStatusOptions.map(option => <button type="button" key={option.value} className={(order.payment_status === 'paid' ? 'paid' : order.status) === option.value ? 'active status-' + option.value : ''} disabled={updatingOrder === order.id} aria-pressed={(order.payment_status === 'paid' ? 'paid' : order.status) === option.value} onClick={() => updateOrderStatus(order, option.value)}>{option.label}</button>)}</div></div></article>)}</div>}
           </> : tab === 'menu-management' ? <div className="menu-manager">
             <div className="section-heading"><div><p className="eyebrow">MENU MANAGEMENT</p><h2>음식종류 및 메뉴 관리</h2></div><span className="menu-count">{menuCategories.length} CATEGORIES</span></div>
