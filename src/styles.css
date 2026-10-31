@@ -541,3 +541,7 @@
 .theme-dark .theme-toggle-icon{border-color:#4a574b;background:#29332b;color:#d5e5d1}
 .theme-dark .theme-toggle-icon:hover{background:#354437}
 @media(max-width:520px){.topbar-actions{gap:12px}.theme-toggle-icon{width:32px;height:32px}}
+
+
+.staff-order-summary .customer-status-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:640px){.staff-order-summary .customer-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
