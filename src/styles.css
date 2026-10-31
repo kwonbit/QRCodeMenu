@@ -106,3 +106,29 @@
 .customer-order-foot{align-items:center}
 .customer-cancel-button{padding:7px 12px;border:1px solid #efd6d2;border-radius:8px;background:#fff7f5;color:#a14c42;font:600 11px inherit;white-space:nowrap;cursor:pointer}
 .customer-cancel-button:disabled{opacity:.55;cursor:wait}
+
+
+/* Menu option editor and customer option picker */
+.menu-options-editor{grid-column:1/-1;padding:15px;border:1px solid #e2e8de;border-radius:11px;background:#f8faf6}
+.menu-options-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.menu-options-heading b{font-size:13px;color:#344235}
+.menu-options-editor>p{margin:7px 0 12px;color:#899287;font-size:10px}
+.menu-option-draft{display:grid;grid-template-columns:minmax(0,1fr) 130px auto;gap:8px;margin-top:8px}
+.menu-option-draft input{min-width:0;padding:10px;border:1px solid #dfe5da;border-radius:8px;background:#fff;font:inherit;font-size:12px}
+.menu-option-draft button{white-space:nowrap}
+.option-modal-backdrop{position:fixed;z-index:1000;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:#10181099;backdrop-filter:blur(4px)}
+.option-modal{position:relative;width:min(100%,430px);max-height:min(85vh,680px);overflow:auto;padding:25px;border:1px solid #e5e9e1;border-radius:18px;background:#fff;box-shadow:0 20px 70px #0004}
+.option-modal-close{position:absolute;top:12px;right:14px;width:32px;height:32px;border:0;border-radius:50%;background:#f1f4ef;color:#566354;font-size:23px;cursor:pointer}
+.option-modal .eyebrow{margin:0 0 7px;color:#82917f;font-size:9px;letter-spacing:1.2px}
+.option-modal h2{margin:0;color:#26352a;font-size:22px}
+.option-base-price{margin:7px 0 18px;color:#778273;font-size:12px}
+.customer-option-list{display:grid;gap:9px}
+.customer-option-list label{display:flex;align-items:center;gap:10px;padding:13px;border:1px solid #e5e9e1;border-radius:10px;background:#fafbf9;cursor:pointer}
+.customer-option-list input{width:17px;height:17px;accent-color:#315e43}
+.customer-option-list span{flex:1;color:#354235;font-size:13px}
+.customer-option-list b{color:#42684a;font-size:12px}
+.option-modal-total{display:flex;justify-content:space-between;gap:10px;margin:18px 0;padding:14px 0;border-top:1px solid #e8ece5;border-bottom:1px solid #e8ece5;color:#596456;font-size:12px}
+.option-modal-total b{color:#26352a;font-size:17px}
+.option-modal>.order-button{width:100%}
+.order-option-note{display:block;margin-top:4px;color:#8b9489;font-size:10px;line-height:1.5}
+@media(max-width:520px){.menu-option-draft{grid-template-columns:1fr 105px}.menu-option-draft button{grid-column:1/-1}.menu-options-editor{padding:12px}.option-modal{padding:21px}}
