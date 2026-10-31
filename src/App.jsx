@@ -214,7 +214,7 @@ export default function App() {
   function openMenuOptions(item) {
     if (!item.options?.length) { add(item); return }
     setOptionMenuItem(item)
-    setSelectedMenuOptions([])
+    setSelectedMenuOptions({ option1: '', option2: '' })
   }
   function changeQuantity(cartKey, amount) {
     setCart(current => current.map(item => item.cartKey === cartKey ? { ...item, quantity: item.quantity + amount } : item).filter(item => item.quantity > 0))
