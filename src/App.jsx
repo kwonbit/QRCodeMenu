@@ -326,7 +326,28 @@ export default function App() {
         if (!response.ok) throw new Error('주소 검색 서비스에 연결하지 못했습니다.')
         const result = await response.json()
         if (!result?.display_name) throw new Error('현재 위치의 주소를 찾지 못했습니다. 주소를 직접 입력해 주세요.')
-        setDeliveryAddress(result.display_name)
+        const address = result.address || {}
+        const isKorea = address.country_code?.toLowerCase() === 'kr' || address.country === '대한민국' || address.country === 'South Korea'
+        const koreanAddressParts = [
+          address.state,
+          address.city,
+          address.county,
+          address.city_district,
+          address.borough,
+          address.town,
+          address.village,
+          address.suburb,
+          address.quarter,
+          address.neighbourhood,
+          address.road,
+          address.house_number,
+          address.building,
+        ].filter(Boolean)
+        const uniqueKoreanParts = [...new Set(koreanAddressParts.map(part => String(part).trim()).filter(Boolean))]
+        const formattedAddress = isKorea && uniqueKoreanParts.length
+          ? uniqueKoreanParts.join(' ')
+          : result.display_name
+        setDeliveryAddress(formattedAddress)
         setLocationError('')
         setNotice('현재 위치의 주소를 입력했습니다. 상세 주소가 맞는지 확인해 주세요.')
       } catch (error) {
