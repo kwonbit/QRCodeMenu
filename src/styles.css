@@ -491,3 +491,51 @@
   .phone-history-controls{flex-direction:column}
   .phone-history-controls button{min-height:42px}
 }
+
+
+/* Persistent light / dark appearance switch */
+.topbar-actions{display:flex;align-items:center;gap:18px}
+.theme-switch{display:inline-flex;align-items:center;gap:3px;padding:4px;border:1px solid #e1e5dc;border-radius:24px;background:#fff}
+.theme-switch button{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:0;border-radius:18px;background:transparent;color:#7c8679;font:600 11px inherit;white-space:nowrap;cursor:pointer}
+.theme-switch button.active{background:#244c3c;color:#fff}
+.theme-switch button span{font-size:13px}
+.theme-dark{color:#e8eee7;background:#171c19;min-height:100vh;color-scheme:dark}
+.theme-dark .topbar,.theme-dark footer{border-color:#343d36}
+.theme-dark .brand{color:#eef3ed}
+.theme-dark .brand-light,.theme-dark .table-chip{color:#a5b0a3}
+.theme-dark .table-chip b{color:#a9d0ad}
+.theme-dark .theme-switch{border-color:#465148;background:#252d27}
+.theme-dark .theme-switch button{color:#c1cbbf}
+.theme-dark .theme-switch button.active{background:#a8c8a8;color:#17251b}
+.theme-dark .hero{background:#29382d}
+.theme-dark .hero h1,.theme-dark .section-heading h2,.theme-dark .cart-title h2,.theme-dark .counter-toolbar h2,.theme-dark .staff-login h2,.theme-dark .table-error h2{color:#edf3eb}
+.theme-dark .hero-copy,.theme-dark .menu-count,.theme-dark .history-help,.theme-dark .table-manager-help,.theme-dark .login-description,.theme-dark .staff-email{color:#aab6a8}
+.theme-dark .tabs{border-color:#3a453c}
+.theme-dark .tabs button{color:#a4afa2}
+.theme-dark .tabs button.active{color:#b9d7b9}
+.theme-dark .count{background:#3a483b;color:#dce8d8}
+.theme-dark .menu-card,.theme-dark .cart-card,.theme-dark .order-card,.theme-dark .customer-order-card,.theme-dark .staff-login,.theme-dark .table-error,.theme-dark .table-qr-card,.theme-dark .menu-admin-panel,.theme-dark .order-filter-panel,.theme-dark .order-status-filter{border-color:#3a453c;background:#242c26;color:#e6ede4}
+.theme-dark .categories button,.theme-dark .logout-button,.theme-dark .quantity button,.theme-dark .menu-category-chip,.theme-dark .menu-category-manage-row,.theme-dark .menu-image-preview,.theme-dark .menu-image-actions button{border-color:#465247;background:#2c352e;color:#d1dbce}
+.theme-dark .categories button.selected,.theme-dark .menu-category-chip.selected{background:#a8c8a8;border-color:#a8c8a8;color:#17251b}
+.theme-dark .cart-row,.theme-dark .order-detail-items,.theme-dark .customer-order-items,.theme-dark .customer-order-foot,.theme-dark .order-actions,.theme-dark .table-filter-row{border-color:#3a453c}
+.theme-dark .cart-row small,.theme-dark .empty-cart,.theme-dark .empty-cart small,.theme-dark .payment-note,.theme-dark .order-card-head span,.theme-dark .customer-order-head small,.theme-dark .refresh-label,.theme-dark .managed-menu-list article span{color:#a3afa1}
+.theme-dark .cart-total,.theme-dark .cart-total b,.theme-dark .cart-row b,.theme-dark .customer-order-total b,.theme-dark .customer-order-items b,.theme-dark .order-detail-items b,.theme-dark .managed-menu-list article b,.theme-dark .managed-menu-list article strong{color:#edf3eb}
+.theme-dark .phone-order-form,.theme-dark .phone-history-lookup,.theme-dark .menu-options-editor,.theme-dark .menu-option-group,.theme-dark .menu-image-control,.theme-dark .menu-image-field input{border-color:#465247;background:#29332b}
+.theme-dark .phone-order-form label,.theme-dark .phone-history-lookup label,.theme-dark .menu-admin-title h3,.theme-dark .menu-admin-title p,.theme-dark .menu-item-form label,.theme-dark .menu-options-heading b,.theme-dark .menu-option-group-heading>b,.theme-dark .customer-option-group h3,.theme-dark .table-filter-row label,.theme-dark .order-filter-heading b,.theme-dark .order-filter-heading span,.theme-dark .order-actions-title{color:#cbd6c8}
+.theme-dark input,.theme-dark textarea,.theme-dark select,.theme-dark .phone-history-controls input,.theme-dark .menu-category-form input,.theme-dark .menu-item-form input,.theme-dark .menu-item-form select,.theme-dark .menu-option-draft input,.theme-dark .phone-order-form input,.theme-dark .phone-order-form textarea,.theme-dark .table-filter-row select,.theme-dark .staff-login input,.theme-dark .order-actions select{border-color:#4a574b;background:#1c241e;color:#edf3eb}
+.theme-dark .phone-order-details,.theme-dark .menu-category-manage-row,.theme-dark .menu-options-editor .menu-option-group{background:#29332b}
+.theme-dark .phone-order-details p,.theme-dark .phone-order-details b,.theme-dark .menu-category-manage-row{color:#cbd6c8}
+.theme-dark .order-filter-panel .order-filter-options button,.theme-dark .order-status-actions button{border-color:#465247;background:#2c352e;color:#cbd6c8}
+.theme-dark .order-filter-panel .order-filter-options button.selected,.theme-dark .order-status-actions button.active{background:#426b4b;border-color:#638b68;color:#fff}
+.theme-dark .empty-orders{border-color:#465247;color:#aab6a8}
+.theme-dark .table-active{color:#9dcea5}
+.theme-dark .table-inactive{color:#e0a69c}
+.theme-dark .notice{background:#293b2d;color:#c5e2c7}
+.theme-dark .form-error{background:#482d2a;color:#ffc5bb}
+.theme-dark .customer-order-status{background:#344535;color:#c2dfc3}
+.theme-dark .customer-order-status.status-accepted{background:#303d57;color:#c2d2ff}
+.theme-dark .customer-order-status.status-preparing{background:#51432c;color:#f4d49c}
+.theme-dark .customer-order-status.status-served,.theme-dark .customer-order-status.status-handed_off{background:#304b37;color:#bde2c3}
+.theme-dark .customer-cancel-button,.theme-dark .menu-delete-button{border-color:#68423d;background:#432e2b;color:#ffc0b6}
+.theme-dark footer{color:#9eaa9c}
+@media(max-width:520px){.topbar-actions{gap:8px}.theme-switch button{padding:7px 8px;font-size:10px}.theme-switch button span{display:none}}
