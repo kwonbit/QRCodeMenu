@@ -494,19 +494,11 @@
 
 
 /* Persistent light / dark appearance switch */
-.topbar-actions{display:flex;align-items:center;gap:18px}
-.theme-switch{display:inline-flex;align-items:center;gap:3px;padding:4px;border:1px solid #e1e5dc;border-radius:24px;background:#fff}
-.theme-switch button{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:0;border-radius:18px;background:transparent;color:#7c8679;font:600 11px inherit;white-space:nowrap;cursor:pointer}
-.theme-switch button.active{background:#244c3c;color:#fff}
-.theme-switch button span{font-size:13px}
 .theme-dark{color:#e8eee7;background:#171c19;min-height:100vh;color-scheme:dark}
 .theme-dark .topbar,.theme-dark footer{border-color:#343d36}
 .theme-dark .brand{color:#eef3ed}
 .theme-dark .brand-light,.theme-dark .table-chip{color:#a5b0a3}
 .theme-dark .table-chip b{color:#a9d0ad}
-.theme-dark .theme-switch{border-color:#465148;background:#252d27}
-.theme-dark .theme-switch button{color:#c1cbbf}
-.theme-dark .theme-switch button.active{background:#a8c8a8;color:#17251b}
 .theme-dark .hero{background:#29382d}
 .theme-dark .hero h1,.theme-dark .section-heading h2,.theme-dark .cart-title h2,.theme-dark .counter-toolbar h2,.theme-dark .staff-login h2,.theme-dark .table-error h2{color:#edf3eb}
 .theme-dark .hero-copy,.theme-dark .menu-count,.theme-dark .history-help,.theme-dark .table-manager-help,.theme-dark .login-description,.theme-dark .staff-email{color:#aab6a8}
@@ -538,4 +530,14 @@
 .theme-dark .customer-order-status.status-served,.theme-dark .customer-order-status.status-handed_off{background:#304b37;color:#bde2c3}
 .theme-dark .customer-cancel-button,.theme-dark .menu-delete-button{border-color:#68423d;background:#432e2b;color:#ffc0b6}
 .theme-dark footer{color:#9eaa9c}
-@media(max-width:520px){.topbar-actions{gap:8px}.theme-switch button{padding:7px 8px;font-size:10px}.theme-switch button span{display:none}}
+
+
+
+/* Compact icon-only theme toggle before the table label */
+.topbar-actions{display:flex;align-items:center;gap:16px}
+.theme-toggle-icon{display:grid;place-items:center;width:34px;height:34px;padding:7px;border:1px solid #dfe5da;border-radius:50%;background:#fff;color:#52644f;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+.theme-toggle-icon:hover{transform:translateY(-1px);background:#eef3eb}
+.theme-toggle-icon svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.theme-dark .theme-toggle-icon{border-color:#4a574b;background:#29332b;color:#d5e5d1}
+.theme-dark .theme-toggle-icon:hover{background:#354437}
+@media(max-width:520px){.topbar-actions{gap:12px}.theme-toggle-icon{width:32px;height:32px}}
